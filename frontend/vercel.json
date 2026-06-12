@@ -2,6 +2,11 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "redirects": [
     {
+      "source": "/",
+      "destination": "https://jeniffer-facturas-aurelio104-d09b8633.koyeb.app/",
+      "permanent": false
+    },
+    {
       "source": "/:path*",
       "destination": "https://jeniffer-facturas-aurelio104-d09b8633.koyeb.app/:path*",
       "permanent": false

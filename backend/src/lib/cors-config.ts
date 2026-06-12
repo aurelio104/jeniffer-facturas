@@ -37,7 +37,7 @@ export function buildCorsOptions(): cors.CorsOptions {
       const o = normalizeOrigin(origin);
       if (allowed.has(o)) return cb(null, true);
       if (localhostRe.test(o)) return cb(null, true);
-      if (process.env.VERCEL && vercelAppRe.test(o)) return cb(null, true);
+      if (vercelAppRe.test(o)) return cb(null, true);
       if (allowTunnel && tunnelRe.test(o)) return cb(null, true);
       cb(null, false);
     }

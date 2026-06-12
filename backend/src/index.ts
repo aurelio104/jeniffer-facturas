@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import path from 'path';
+import { fileURLToPath } from 'url';
 import express from 'express';
 import { app, bootstrapApp } from './app.js';
 import {
@@ -13,7 +14,7 @@ import { startAppScheduler } from './services/scheduler.js';
 const PORT = Number(process.env.PORT) || 3020;
 
 if (process.env.SERVE_FRONTEND === '1') {
-  const dist = path.join(process.cwd(), '..', 'frontend', 'dist');
+  const dist = path.join(path.dirname(fileURLToPath(import.meta.url)), '../../frontend/dist');
   app.use(express.static(dist));
   app.get(/^(?!\/api).*/, (_req, res) => {
     res.sendFile(path.join(dist, 'index.html'));
