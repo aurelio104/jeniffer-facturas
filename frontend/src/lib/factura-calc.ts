@@ -50,10 +50,19 @@ export function calcularBaseImponible(totalBs: number, exentoBs = 0) {
 export function montoProcesarIslr(montoIngresado: number, totalBs: number, exentoBs = 0): number {
   if (montoIngresado <= 0) return 0;
   const grabado = Math.max(0, totalBs - exentoBs);
-  if (round2(montoIngresado) === round2(totalBs)) {
+  const m = round2(montoIngresado);
+  const tot = round2(totalBs);
+  const grb = round2(grabado);
+
+  if (m === tot) {
     return round2(grabado / 1.16 + exentoBs);
   }
-  return round2(montoIngresado);
+
+  if (exentoBs === 0 && m <= grb + 0.01) {
+    return round2(m / 1.16);
+  }
+
+  return m;
 }
 
 /** Restante grabado (total − exento) menos montos ya ingresados en otras líneas */

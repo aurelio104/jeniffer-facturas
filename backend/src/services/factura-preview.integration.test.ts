@@ -46,7 +46,7 @@ test('pipeline preview: una línea SERVICIOS al 50% del grabado', async () => {
   assert.equal(lineasIslr[0].totalBs, half);
   assert.equal(lineasIslr[0].grabadoBs, half);
   assert.ok(lineasIslr[0].baseIslr > 0);
-  assert.equal(islr.retencionIslr, round2(half * 0.02));
+  assert.equal(islr.retencionIslr, round2((half / 1.16) * 0.02));
   assert.ok(lineasIslr[0].montoAPagar < iva.montoAPagar);
 });
 
@@ -62,6 +62,11 @@ test('pipeline preview: SERVICIOS + HONORARIOS reparto completo', async () => {
   assert.equal(iva.montoAPagar, round2(13518.31 - iva.retencionIva - islr.retencionIslr));
   assert.ok(lineasIslr[0].concepto === 'SERVICIOS');
   assert.ok(lineasIslr[1].concepto === 'HONORARIOS PROFESIONALES');
+  const base0 = round2(half / 1.16);
+  const base1 = round2(13518.31 - half) / 1.16;
+  assert.equal(lineasIslr[0].baseIslr, round2(base0));
+  assert.equal(lineasIslr[0].retencionIslr, round2(base0 * 0.02));
+  assert.equal(lineasIslr[1].retencionIslr, round2(round2(base1) * 0.05));
 });
 
 test('pipeline preview: factura completa un solo concepto', async () => {

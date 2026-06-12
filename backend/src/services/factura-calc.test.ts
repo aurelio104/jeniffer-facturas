@@ -41,7 +41,12 @@ test('REC y NE no aplican ISLR', () => {
 
 test('montoProcesarIslr desglosa cuando monto = total', () => {
   assert.equal(montoProcesarIslr(13518.31, 13518.31, 0), 11653.72);
-  assert.equal(montoProcesarIslr(5000, 13518.31, 0), 5000);
+  assert.equal(montoProcesarIslr(5000, 13518.31, 0), round2(5000 / 1.16));
+});
+
+test('montoProcesarIslr desglosa grabado parcial multi-línea', () => {
+  const half = round2(13518.31 / 2);
+  assert.equal(montoProcesarIslr(half, 13518.31, 0), round2(half / 1.16));
 });
 
 test('montoProcesarIslr suma exento al desglosar', () => {
@@ -88,8 +93,11 @@ test('varias líneas con montos parciales asignan restante en grabado', () => {
     0,
     'FAC'
   );
-  assert.equal(out[0].monto, 5000);
-  assert.equal(out[1].monto, round2(calcularGrabado(13518.31, 0) - 5000));
+  assert.equal(out[0].monto, round2(5000 / 1.16));
+  assert.equal(
+    out[1].monto,
+    round2((calcularGrabado(13518.31, 0) - 5000) / 1.16)
+  );
 });
 
 test('enriquecerLineasIslrConDesglose reparte totales proporcionalmente', () => {

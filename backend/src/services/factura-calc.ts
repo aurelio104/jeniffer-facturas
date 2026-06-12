@@ -28,10 +28,21 @@ export function calcularBaseImponible(totalBs: number, exentoBs = 0) {
 export function montoProcesarIslr(montoIngresado: number, totalBs: number, exentoBs = 0): number {
   if (montoIngresado <= 0) return 0;
   const grabado = Math.max(0, totalBs - exentoBs);
-  if (round2(montoIngresado) === round2(totalBs)) {
+  const m = round2(montoIngresado);
+  const tot = round2(totalBs);
+  const grb = round2(grabado);
+
+  // Total factura en un concepto: desglosa grabado → base + exento (Excel btnAgregarConcepto)
+  if (m === tot) {
     return round2(grabado / 1.16 + exentoBs);
   }
-  return round2(montoIngresado);
+
+  // Grabado parcial de línea (precio con IVA): ISLR sobre base imponible de esa línea
+  if (exentoBs === 0 && m <= grb + 0.01) {
+    return round2(m / 1.16);
+  }
+
+  return m;
 }
 
 export function validarSumaConceptosIslr(
