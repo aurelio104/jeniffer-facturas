@@ -43,7 +43,19 @@ No hace falta Render ni túneles Cloudflare si usas esta guía.
 | `FRONTEND_URL` | `https://jeniffer-facturas.vercel.app` (tu dominio Vercel) |
 | `NODE_ENV` | `production` |
 
-**No** configures `VITE_API_URL` (o déjala vacía): el frontend usa `/api` en el mismo dominio.
+### Importante: eliminar URL antigua
+
+Si existía `VITE_API_URL` apuntando a `trycloudflare.com` u otro túnel:
+
+1. Vercel → Project → **Settings → Environment Variables**
+2. **Elimina** `VITE_API_URL` (o déjala vacía)
+3. **Redeploy** el proyecto
+
+El frontend usa automáticamente `https://tu-dominio.vercel.app/api` (mismo sitio).
+
+### Root Directory
+
+Puede ser **raíz del repo** o **`frontend`** — ambos `vercel.json` incluyen API serverless y build completo.
 
 4. Deploy.
 

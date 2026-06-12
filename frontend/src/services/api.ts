@@ -1,9 +1,8 @@
 import axios from 'axios';
 import { getSession, getToken, clearSession } from '../lib/auth';
+import { resolveApiBase } from '../lib/api-base';
 
-const apiBase = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, '') || '/api';
-
-const api = axios.create({ baseURL: apiBase });
+const api = axios.create({ baseURL: resolveApiBase() });
 
 api.interceptors.request.use((config) => {
   const user = getSession();

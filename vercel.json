@@ -4,6 +4,11 @@
   "outputDirectory": "frontend/dist",
   "installCommand": "npm install",
   "framework": null,
+  "build": {
+    "env": {
+      "VITE_API_URL": ""
+    }
+  },
   "functions": {
     "api/index.ts": {
       "maxDuration": 30,
