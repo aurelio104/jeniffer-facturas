@@ -1,3 +1,15 @@
+# Despliegue producción
+
+| Componente | URL |
+|------------|-----|
+| **Frontend (Vercel)** | https://jeniffer-facturas.vercel.app |
+| **Repositorio** | https://github.com/aurelio104/jeniffer-facturas |
+| **API permanente (Render)** | Conectar blueprint: https://render.com/deploy?repo=https://github.com/aurelio104/jeniffer-facturas |
+
+Tras desplegar en Render, configura en Vercel: `VITE_API_URL=https://TU-SERVICIO.onrender.com/api` y `FRONTEND_URL=https://jeniffer-facturas.vercel.app` en Render.
+
+---
+
 # Despliegue ligero (Vercel + API en la nube)
 
 Jeniffer tiene **frontend** (React/Vite) y **backend** (Express + Prisma).  
