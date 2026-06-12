@@ -132,3 +132,35 @@ test('enriquecerLineasIslrConDesglose reparte totales proporcionalmente', () => 
   assert.equal(round2(enriched[0].totalBs + enriched[1].totalBs), 13518.31);
   assert.equal(enriched[0].grabadoBs, half);
 });
+
+test('enriquecerLineasIslrConDesglose con una línea parcial no asigna el total de factura', () => {
+  const baseLinea = (): IslrLineaDetalle => ({
+    concepto: 'SERVICIOS',
+    montoIngresado: 6759.16,
+    baseIslr: 6759.16,
+    retencionIslr: 135.18,
+    pctEfectivo: 0.02,
+    totalBs: 0,
+    totalUsd: null,
+    grabadoBs: 0,
+    baseImponible: 0,
+    iva16: 0,
+    retencionIva: 0,
+    montoAPagar: 0,
+    montoAPagarUsd: null
+  });
+  const partial = round2(13518.31 / 2);
+  const enriched = enriquecerLineasIslrConDesglose(
+    [baseLinea()],
+    [{ concepto: 'SERVICIOS', monto: partial }],
+    13518.31,
+    0,
+    '75%',
+    577.55,
+    'Bs'
+  );
+  assert.equal(enriched[0].totalBs, partial);
+  assert.equal(enriched[0].grabadoBs, partial);
+  assert.ok(enriched[0].baseIslr > 0);
+  assert.ok(enriched[0].retencionIslr > 1);
+});

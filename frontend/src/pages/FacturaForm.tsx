@@ -24,7 +24,6 @@ import {
   autollenarSiUnSoloConcepto,
   calcularBaseImponible,
   calcularGrabado,
-  grabadoRestanteIslr,
   isTipoSinIslr,
   matchConceptoTabla,
   newConceptoRow,
@@ -482,23 +481,17 @@ export function FacturaForm() {
           {!sinIslr && (
             <div className="concepto-islr-list form-grid-span-3">
               {conceptos.map((c, i) => {
-                const restante = totalBsForm > 0
-                  ? grabadoRestanteIslr(conceptos, totalBsForm, exento, i)
-                  : 0;
                 const grabado = totalBsForm > 0 ? calcularGrabado(totalBsForm, exento) : 0;
                 const hintMonto =
                   c.concepto && totalBsForm > 0
-                    ? restante > 0
-                      ? `Grabado total: ${fmtBs(grabado)} · disponible aquí: ${fmtBs(restante)}`
-                      : 'Sin grabado restante — ajuste montos de otras líneas'
+                    ? `Grabado total: ${fmtBs(grabado)} · en esta línea: ${fmtBs(c.monto)} · sin asignar: ${fmtBs(grabadoLibre)}`
                     : undefined;
+                const activeWithMonto = conceptos.filter(
+                  (row) => row.concepto.trim() && row.monto > 0
+                );
+                const activeIndex = activeWithMonto.findIndex((row) => row.id === c.id);
                 const lineaCalc =
-                  c.concepto.trim() && c.monto > 0
-                    ? preview?.lineasIslr?.find(
-                        (l) =>
-                          l.concepto.toLowerCase() === c.concepto.trim().toLowerCase()
-                      )
-                    : undefined;
+                  activeIndex >= 0 ? preview?.lineasIslr?.[activeIndex] : undefined;
                 const incomplete = !c.concepto.trim() || c.monto <= 0;
                 const seccionLabel = c.concepto.trim()
                   ? conceptoSeccionLabel(c.concepto)

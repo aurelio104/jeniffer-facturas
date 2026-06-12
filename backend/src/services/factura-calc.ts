@@ -116,12 +116,16 @@ export function enriquecerLineasIslrConDesglose(
 ): IslrLineaDetalle[] {
   const grabadoTotal = calcularGrabado(totalBs, exentoBs);
   const rawByConcept = new Map<string, number>();
+  let grabadoAsignadoRaw = 0;
   for (const c of conceptosRaw) {
     const name = c.concepto.trim();
     if (!name || c.monto <= 0) continue;
     const key = name.toLowerCase();
-    rawByConcept.set(key, round2((rawByConcept.get(key) ?? 0) + c.monto));
+    const m = round2(c.monto);
+    rawByConcept.set(key, round2((rawByConcept.get(key) ?? 0) + m));
+    grabadoAsignadoRaw = round2(grabadoAsignadoRaw + m);
   }
+  const grabadoCompleto = grabadoTotal > 0 && grabadoAsignadoRaw >= grabadoTotal - 0.01;
 
   let totalAsignado = 0;
   let exentoAsignado = 0;
@@ -136,12 +140,14 @@ export function enriquecerLineasIslrConDesglose(
           ? 1
           : 0;
     const isLast = index === lineas.length - 1;
-    const lineTotalBs = isLast
-      ? round2(totalBs - totalAsignado)
-      : round2(totalBs * ratio);
-    const lineExento = isLast
-      ? round2(exentoBs - exentoAsignado)
-      : round2(exentoBs * ratio);
+    const lineTotalBs =
+      grabadoCompleto && isLast
+        ? round2(totalBs - totalAsignado)
+        : round2(totalBs * ratio);
+    const lineExento =
+      grabadoCompleto && isLast
+        ? round2(exentoBs - exentoAsignado)
+        : round2(exentoBs * ratio);
     totalAsignado = round2(totalAsignado + lineTotalBs);
     exentoAsignado = round2(exentoAsignado + lineExento);
     const iva = calcularIvaYNeto(
