@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   calcularBaseImponible,
   calcularGrabado,
+  enriquecerLineasIslrConDesglose,
   isTipoConIslr,
   isTipoSinIslr,
   montoProcesarIslr,
@@ -10,6 +11,7 @@ import {
   previewIvaDesdeTotales,
   validarSumaConceptosIslr
 } from './factura-calc.js';
+import type { IslrLineaDetalle } from './islr.js';
 
 test('calcularBaseImponible con IVA 16% incluido', () => {
   const base = calcularBaseImponible(13518.31, 0);
@@ -88,4 +90,45 @@ test('varias líneas con montos parciales asignan restante en grabado', () => {
   );
   assert.equal(out[0].monto, 5000);
   assert.equal(out[1].monto, round2(calcularGrabado(13518.31, 0) - 5000));
+});
+
+test('enriquecerLineasIslrConDesglose reparte totales proporcionalmente', () => {
+  const baseLinea = (): IslrLineaDetalle => ({
+    concepto: '',
+    montoIngresado: 0,
+    baseIslr: 100,
+    retencionIslr: 2,
+    pctEfectivo: 0.02,
+    totalBs: 0,
+    totalUsd: null,
+    grabadoBs: 0,
+    baseImponible: 0,
+    iva16: 0,
+    retencionIva: 0,
+    montoAPagar: 0,
+    montoAPagarUsd: null
+  });
+  const half = round2(13518.31 / 2);
+  const lineas: IslrLineaDetalle[] = [
+    { ...baseLinea(), concepto: 'SERVICIOS', montoIngresado: half },
+    { ...baseLinea(), concepto: 'HONORARIOS PROFESIONALES', montoIngresado: half }
+  ];
+  const raw = [
+    { concepto: 'SERVICIOS', monto: half },
+    { concepto: 'HONORARIOS PROFESIONALES', monto: half }
+  ];
+  const enriched = enriquecerLineasIslrConDesglose(
+    lineas,
+    raw,
+    13518.31,
+    0,
+    '75%',
+    577.55,
+    'Bs'
+  );
+  assert.equal(enriched.length, 2);
+  assert.equal(enriched[0].totalBs, half);
+  assert.equal(enriched[1].totalBs, round2(13518.31 - half));
+  assert.equal(round2(enriched[0].totalBs + enriched[1].totalBs), 13518.31);
+  assert.equal(enriched[0].grabadoBs, half);
 });

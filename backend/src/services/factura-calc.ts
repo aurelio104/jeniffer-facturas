@@ -1,4 +1,4 @@
-import type { ConceptoIslrInput } from './islr.js';
+import type { ConceptoIslrInput, IslrLineaDetalle } from './islr.js';
 import { calcularIvaYNeto, round2 } from './islr.js';
 
 export { round2 };
@@ -102,4 +102,70 @@ export function previewIvaDesdeTotales(
   moneda?: string
 ) {
   return calcularIvaYNeto(totalBs, exentoBs, retencionIvaPct, retencionIslr, tasa, moneda);
+}
+
+/** Desglose IVA / neto proporcional por línea ISLR (para preview en formulario). */
+export function enriquecerLineasIslrConDesglose(
+  lineas: IslrLineaDetalle[],
+  conceptosRaw: ConceptoIslrInput[],
+  totalBs: number,
+  exentoBs: number,
+  retencionIvaPct: string,
+  tasa: number | null | undefined,
+  moneda: string
+): IslrLineaDetalle[] {
+  const grabadoTotal = calcularGrabado(totalBs, exentoBs);
+  const rawByConcept = new Map<string, number>();
+  for (const c of conceptosRaw) {
+    const name = c.concepto.trim();
+    if (!name || c.monto <= 0) continue;
+    const key = name.toLowerCase();
+    rawByConcept.set(key, round2((rawByConcept.get(key) ?? 0) + c.monto));
+  }
+
+  let totalAsignado = 0;
+  let exentoAsignado = 0;
+
+  return lineas.map((linea, index) => {
+    const key = linea.concepto.toLowerCase();
+    const lineGrabado = rawByConcept.get(key) ?? linea.montoIngresado;
+    const ratio =
+      grabadoTotal > 0
+        ? lineGrabado / grabadoTotal
+        : lineas.length === 1
+          ? 1
+          : 0;
+    const isLast = index === lineas.length - 1;
+    const lineTotalBs = isLast
+      ? round2(totalBs - totalAsignado)
+      : round2(totalBs * ratio);
+    const lineExento = isLast
+      ? round2(exentoBs - exentoAsignado)
+      : round2(exentoBs * ratio);
+    totalAsignado = round2(totalAsignado + lineTotalBs);
+    exentoAsignado = round2(exentoAsignado + lineExento);
+    const iva = calcularIvaYNeto(
+      lineTotalBs,
+      lineExento,
+      retencionIvaPct,
+      linea.retencionIslr,
+      tasa,
+      moneda
+    );
+    let totalUsd: number | null = null;
+    if (tasa && tasa > 0) {
+      totalUsd = moneda === 'USD' ? round2(lineTotalBs) : round2(lineTotalBs / tasa);
+    }
+    return {
+      ...linea,
+      totalBs: lineTotalBs,
+      totalUsd,
+      grabadoBs: iva.grabadoBs,
+      baseImponible: iva.baseImponible,
+      iva16: iva.iva16,
+      retencionIva: iva.retencionIva,
+      montoAPagar: iva.montoAPagar,
+      montoAPagarUsd: iva.montoAPagarUsd
+    };
+  });
 }

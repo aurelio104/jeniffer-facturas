@@ -134,9 +134,11 @@ export function prepararNuevaLineaIslr(
   conceptos: ConceptoRow[],
   totalBs: number,
   exentoBs: number
-): ConceptoRow[] {
+): { conceptos: ConceptoRow[]; repartido: boolean } {
   const grabado = calcularGrabado(totalBs, exentoBs);
-  if (grabado <= 0) return [...conceptos, newConceptoRow()];
+  if (grabado <= 0) {
+    return { conceptos: [...conceptos, newConceptoRow()], repartido: false };
+  }
 
   const usado = sumMontosConceptos(conceptos);
   if (
@@ -147,9 +149,19 @@ export function prepararNuevaLineaIslr(
     const half = round2(grabado / 2);
     const line1 = { ...conceptos[0], monto: half };
     const line2 = newConceptoRow({ monto: round2(grabado - half) });
-    return [line1, line2];
+    return { conceptos: [line1, line2], repartido: true };
   }
 
   const restante = Math.max(0, round2(grabado - usado));
-  return [...conceptos, newConceptoRow({ monto: restante > 0 ? restante : 0 })];
+  return {
+    conceptos: [...conceptos, newConceptoRow({ monto: restante > 0 ? restante : 0 })],
+    repartido: false
+  };
+}
+
+export function conceptoSeccionLabel(concepto: string): string {
+  const t = concepto.trim();
+  if (!t) return '';
+  const first = t.split(/\s+/)[0] ?? t;
+  return first.length >= 4 ? first : t;
 }

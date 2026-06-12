@@ -86,6 +86,14 @@ export type IslrLineaDetalle = {
   baseIslr: number;
   retencionIslr: number;
   pctEfectivo: number;
+  totalBs: number;
+  totalUsd: number | null;
+  grabadoBs: number;
+  baseImponible: number;
+  iva16: number;
+  retencionIva: number;
+  montoAPagar: number;
+  montoAPagarUsd: number | null;
 };
 
 export type FacturaPreview = Factura & {

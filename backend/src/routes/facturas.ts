@@ -6,6 +6,7 @@ import { logAuditoria } from '../services/auditoria.js';
 import { getRequestUser } from '../lib/request-user.js';
 import { calcularIvaYNeto, calcularIslr, type ConceptoIslrInput } from '../services/islr.js';
 import {
+  enriquecerLineasIslrConDesglose,
   normalizarConceptosIslr,
   validarSumaConceptosIslr
 } from '../services/factura-calc.js';
@@ -74,6 +75,15 @@ async function buildFacturaData(input: z.infer<typeof schema>, existingId?: stri
     input.tipo
   );
   const islr = await calcularIslr(tipoIslr, conceptos, totalBs);
+  const lineasIslr = enriquecerLineasIslrConDesglose(
+    islr.lineas,
+    conceptosRaw,
+    totalBs,
+    input.exentoBs ?? 0,
+    retIva,
+    tasa,
+    input.moneda ?? 'Bs'
+  );
   const iva = calcularIvaYNeto(
     totalBs,
     input.exentoBs ?? 0,
@@ -115,7 +125,7 @@ async function buildFacturaData(input: z.infer<typeof schema>, existingId?: stri
     retencionEnviada: input.retencionEnviada ?? 'Pendiente'
   };
 
-  return { data, lineasIslr: islr.lineas };
+  return { data, lineasIslr };
 }
 
 function round2(n: number) {

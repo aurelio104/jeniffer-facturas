@@ -18,6 +18,7 @@ import {
   fmtBs
 } from '../services/api';
 import { AdminOnly } from '../components/AdminOnly';
+import { IslrLineaCalcPanel } from '../components/IslrLineaCalcPanel';
 import {
   aplicarMontoSugeridoRow,
   autollenarSiUnSoloConcepto,
@@ -27,6 +28,7 @@ import {
   isTipoSinIslr,
   matchConceptoTabla,
   newConceptoRow,
+  conceptoSeccionLabel,
   prepararNuevaLineaIslr,
   round2,
   sumMontosConceptos,
@@ -52,6 +54,7 @@ export function FacturaForm() {
   const [tasa, setTasa] = useState(0);
   const [preview, setPreview] = useState<FacturaPreview | null>(null);
   const [msg, setMsg] = useState('');
+  const [islrHint, setIslrHint] = useState('');
   const [dupWarning, setDupWarning] = useState('');
   const [locked, setLocked] = useState(false);
 
@@ -279,6 +282,7 @@ export function FacturaForm() {
     } else {
       setConceptos(copy);
     }
+    setIslrHint('');
   };
 
   const setConceptoMonto = (index: number, monto: number) => {
@@ -288,12 +292,17 @@ export function FacturaForm() {
   };
 
   const addConcepto = () => {
-    const next = prepararNuevaLineaIslr(conceptos, totalBsForm, exento);
-    if (next.length === 2 && conceptos.length === 1) {
-      setMsg('Grabado repartido entre 2 líneas. Ajuste cada monto según el concepto.');
-    } else {
-      setMsg('');
+    const firstIncomplete = conceptos.some((c) => !c.concepto.trim() || c.monto <= 0);
+    if (firstIncomplete && conceptos.length >= 1) {
+      setIslrHint('Complete concepto y monto en la línea actual antes de agregar otra.');
+      return;
     }
+    const { conceptos: next, repartido } = prepararNuevaLineaIslr(conceptos, totalBsForm, exento);
+    setIslrHint(
+      repartido
+        ? 'Grabado repartido entre 2 líneas. Ajuste cada monto según el concepto.'
+        : ''
+    );
     setConceptos(next);
   };
 
@@ -456,7 +465,11 @@ export function FacturaForm() {
               <span className="panel-meta">
                 {conceptos.length} línea(s)
                 {grabadoTotal > 0 && (
-                  <> · libre {fmtBs(grabadoLibre)} de {fmtBs(grabadoTotal)}</>
+                  <>
+                    {' '}
+                    · asignado {fmtBs(grabadoUsado)} · libre {fmtBs(grabadoLibre)} de{' '}
+                    {fmtBs(grabadoTotal)}
+                  </>
                 )}
               </span>
             )}
@@ -479,28 +492,28 @@ export function FacturaForm() {
                       ? `Grabado total: ${fmtBs(grabado)} · disponible aquí: ${fmtBs(restante)}`
                       : 'Sin grabado restante — ajuste montos de otras líneas'
                     : undefined;
-                const activeRows = conceptos.filter((row) => row.concepto.trim());
-                const activeIndex = activeRows.findIndex((row) => row.id === c.id);
                 const lineaCalc =
-                  activeIndex >= 0 ? preview?.lineasIslr?.[activeIndex] : undefined;
-                const pctLabel =
-                  lineaCalc && lineaCalc.pctEfectivo > 0
-                    ? `${round2(lineaCalc.pctEfectivo * 100)}%`
-                    : null;
+                  c.concepto.trim() && c.monto > 0
+                    ? preview?.lineasIslr?.find(
+                        (l) =>
+                          l.concepto.toLowerCase() === c.concepto.trim().toLowerCase()
+                      )
+                    : undefined;
+                const incomplete = !c.concepto.trim() || c.monto <= 0;
+                const seccionLabel = c.concepto.trim()
+                  ? conceptoSeccionLabel(c.concepto)
+                  : '';
                 return (
-                  <div key={c.id} className="concepto-islr-card" data-linea={i + 1}>
+                  <div
+                    key={c.id}
+                    className={`concepto-islr-card${incomplete ? ' concepto-islr-card-incomplete' : ''}`}
+                    data-linea={i + 1}
+                  >
                     <div className="concepto-islr-head">
                       <span className="concepto-islr-badge">Línea {i + 1}</span>
                       {c.concepto && (
                         <span className="concepto-islr-name" title={c.concepto}>
                           {c.concepto}
-                        </span>
-                      )}
-                      {lineaCalc && c.concepto && (
-                        <span className="concepto-islr-calc">
-                          <span>Base ISLR: {fmtBs(lineaCalc.baseIslr)}</span>
-                          <span>Ret: {fmtBs(lineaCalc.retencionIslr)}</span>
-                          {pctLabel && <span>Tarifa: {pctLabel}</span>}
                         </span>
                       )}
                     </div>
@@ -545,6 +558,13 @@ export function FacturaForm() {
                         Quitar línea {i + 1}
                       </button>
                     )}
+                    <IslrLineaCalcPanel
+                      conceptoLabel={seccionLabel}
+                      loading={previewLoading && Boolean(c.concepto.trim() && c.monto > 0)}
+                      linea={lineaCalc}
+                      retIvaLabel={retIvaLabel}
+                      tipoIslrLabel={tipoIslrLabel}
+                    />
                   </div>
                 );
               })}
@@ -560,11 +580,37 @@ export function FacturaForm() {
                   ? 'Ajuste los montos de las líneas para liberar grabado antes de agregar otra.'
                   : 'Seleccione tipo y monto en cada línea. La suma no puede superar el grabado.'}
               </span>
+              {islrHint && <span className="islr-inline-hint">{islrHint}</span>}
+            </div>
+          )}
+          {!sinIslr && preview && grabadoUsado > 0 && (
+            <div className="islr-resumen-total form-grid-span-3">
+              <p className="islr-resumen-total-title">Resumen total factura</p>
+              <div className="islr-linea-calc-grid">
+                <div className="calc-preview-item">
+                  <label>A pagar Bs</label>
+                  <MoneyValue value={preview.montoAPagar} size="lg" />
+                </div>
+                {preview.montoAPagarUsd != null && (
+                  <div className="calc-preview-item">
+                    <label>A pagar USD</label>
+                    <MoneyValue value={preview.montoAPagarUsd} />
+                  </div>
+                )}
+                <div className="calc-preview-item">
+                  <label>Ret. ISLR total</label>
+                  <MoneyValue value={preview.retencionIslr} />
+                </div>
+                <div className="calc-preview-item">
+                  <label>Ret. IVA total</label>
+                  <MoneyValue value={preview.retencionIva} />
+                </div>
+              </div>
             </div>
           )}
         </div>
 
-        {(preview || previewLoading || total > 0 && rif) && (
+        {sinIslr && (preview || previewLoading || total > 0 && rif) && (
           <div className="form-grid-span-3 calc-preview">
             <p className="calc-preview-title">
               {previewLoading ? 'Calculando…' : 'Cálculo automático'}
@@ -581,11 +627,6 @@ export function FacturaForm() {
                 <div className="calc-preview-item">
                   <label>Ret. IVA ({retIvaLabel})</label>
                   <MoneyValue value={preview.retencionIva} />
-                </div>
-                <div className="calc-preview-item"><label>Base ISLR</label><MoneyValue value={preview.baseIslr} /></div>
-                <div className="calc-preview-item">
-                  <label>Ret. ISLR ({tipoIslrLabel})</label>
-                  <MoneyValue value={preview.retencionIslr} />
                 </div>
                 <div className="calc-preview-item calc-preview-highlight">
                   <label>A pagar Bs</label>

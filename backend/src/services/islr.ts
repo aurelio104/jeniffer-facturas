@@ -13,6 +13,14 @@ export interface IslrLineaDetalle {
   baseIslr: number;
   retencionIslr: number;
   pctEfectivo: number;
+  totalBs: number;
+  totalUsd: number | null;
+  grabadoBs: number;
+  baseImponible: number;
+  iva16: number;
+  retencionIva: number;
+  montoAPagar: number;
+  montoAPagarUsd: number | null;
 }
 
 export interface IslrCalcResult {
@@ -172,7 +180,15 @@ export async function calcularIslr(
         montoIngresado: c.monto,
         baseIslr: round2(c.monto),
         retencionIslr: 0,
-        pctEfectivo: 0
+        pctEfectivo: 0,
+        totalBs: 0,
+        totalUsd: null,
+        grabadoBs: 0,
+        baseImponible: 0,
+        iva16: 0,
+        retencionIva: 0,
+        montoAPagar: 0,
+        montoAPagarUsd: null
       });
       continue;
     }
@@ -193,7 +209,15 @@ export async function calcularIslr(
       montoIngresado: c.monto,
       baseIslr: linea.baseImponibleReal,
       retencionIslr: linea.impuestoEnBs,
-      pctEfectivo: linea.pctEfectivo
+      pctEfectivo: linea.pctEfectivo,
+      totalBs: 0,
+      totalUsd: null,
+      grabadoBs: 0,
+      baseImponible: 0,
+      iva16: 0,
+      retencionIva: 0,
+      montoAPagar: 0,
+      montoAPagarUsd: null
     });
   }
 

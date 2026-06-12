@@ -1028,6 +1028,64 @@ body.modal-open .site-header-global {
   font-size: 0.75rem;
 }
 
+.concepto-islr-card-incomplete {
+  border-color: rgba(245, 158, 11, 0.35);
+  background: rgba(245, 158, 11, 0.04);
+}
+
+.islr-linea-calc {
+  margin-top: 0.85rem;
+  padding-top: 0.85rem;
+  border-top: 1px dashed var(--border-subtle);
+}
+
+.islr-linea-calc-concept {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-primary);
+  margin: 0 0 0.35rem;
+}
+
+.islr-linea-calc-title {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  margin: 0 0 0.65rem;
+  font-weight: 600;
+}
+
+.islr-linea-calc-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 0.65rem;
+}
+
+.islr-inline-hint {
+  font-size: 0.8125rem;
+  color: var(--green-600, #059669);
+  margin-left: 0.5rem;
+}
+
+.islr-resumen-total {
+  margin-top: 0.75rem;
+  padding: 0.85rem 1rem;
+  border-radius: var(--radius-md);
+  background: rgba(16, 185, 129, 0.06);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.islr-resumen-total-title {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  margin: 0 0 0.65rem;
+  font-weight: 600;
+}
+
 .concepto-islr-add-row {
   display: flex;
   align-items: center;
