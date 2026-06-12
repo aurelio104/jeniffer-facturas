@@ -834,10 +834,14 @@ body {
 }
 
 /* —— Modal —— */
+body.modal-open .site-header-global {
+  pointer-events: none;
+}
+
 .modal-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 500;
+  z-index: 1000;
   display: flex;
   align-items: center;
   justify-content: center;

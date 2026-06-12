@@ -16,7 +16,13 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (r) => r,
   (err) => {
-    if (err.response?.status === 401 && !err.config?.url?.includes('/auth/login')) {
+    const status = err.response?.status;
+    const url = err.config?.url ?? '';
+    if (
+      status === 401 &&
+      !url.includes('/auth/login') &&
+      !url.includes('/auth/me')
+    ) {
       clearSession();
       if (window.location.pathname !== '/login') {
         window.location.href = '/login';

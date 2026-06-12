@@ -56,8 +56,10 @@ export function UsuariosAdmin() {
         await adminApi.createUser(form);
         setMsg('Usuario creado');
       }
-      load();
-      setTimeout(() => setModalOpen(false), 500);
+      await load();
+      setModalOpen(false);
+      setForm(empty);
+      setEditing(null);
     } catch (error: unknown) {
       const ax = error as { response?: { data?: { error?: string } } };
       setErr(ax.response?.data?.error ?? 'Error al guardar');
@@ -141,19 +143,23 @@ export function UsuariosAdmin() {
           </>
         }
       >
-        <form id="user-form" onSubmit={save} className="form-grid form-grid-1">
+        <form id="user-form" onSubmit={save} className="form-grid form-grid-1" autoComplete="off">
           <FormField
             label="Usuario"
             value={form.username}
             onChange={(e) => setForm({ ...form, username: e.target.value })}
             disabled={!!editing}
             required
+            autoComplete="off"
+            name="new-user-username"
           />
           <FormField
             label="Nombre"
             value={form.nombre}
             onChange={(e) => setForm({ ...form, nombre: e.target.value })}
             required
+            autoComplete="name"
+            name="new-user-nombre"
           />
           <FormField
             label={editing ? 'Nueva contraseña (opcional)' : 'Contraseña'}
@@ -161,6 +167,8 @@ export function UsuariosAdmin() {
             value={form.password}
             onChange={(e) => setForm({ ...form, password: e.target.value })}
             required={!editing}
+            autoComplete="new-password"
+            name="new-user-password"
           />
           <FormField
             as="select"
