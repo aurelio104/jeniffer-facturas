@@ -1,96 +1,89 @@
-# Despliegue producción
+# Despliegue en Vercel (todo en un solo proyecto)
 
-| Componente | URL |
-|------------|-----|
-| **Frontend (Vercel)** | https://jeniffer-facturas.vercel.app |
+| Componente | Dónde |
+|------------|--------|
+| **App** | https://jeniffer-facturas.vercel.app |
+| **API** | Misma URL, rutas `/api/*` (serverless) |
 | **Repositorio** | https://github.com/aurelio104/jeniffer-facturas |
-| **API permanente (Render)** | Conectar blueprint: https://render.com/deploy?repo=https://github.com/aurelio104/jeniffer-facturas |
-
-Tras desplegar en Render, configura en Vercel: `VITE_API_URL=https://TU-SERVICIO.onrender.com/api` y `FRONTEND_URL=https://jeniffer-facturas.vercel.app` en Render.
 
 ---
 
-# Despliegue ligero (Vercel + API en la nube)
+## Arquitectura
 
-Jeniffer tiene **frontend** (React/Vite) y **backend** (Express + Prisma).  
-Vercel es ideal para el frontend; el API y la base de datos van en otro servicio.
+- **Frontend:** estático (`frontend/dist`) en Vercel CDN.
+- **Backend:** función serverless `api/index.ts` (Express).
+- **Base de datos:** **Turso** (LibSQL en la nube). SQLite local no funciona en Vercel.
 
-## ¿Se puede todo en Vercel solo?
-
-**No recomendado** con la configuración actual: el API usa SQLite en archivo y Vercel serverless no guarda archivos entre invocaciones.
-
-**Opción sencilla:** frontend en Vercel + API en Render (gratis) + base Turso (gratis) o SQLite en Render.
+No hace falta Render ni túneles Cloudflare si usas esta guía.
 
 ---
 
-## 1. Crear usuarios (admin)
+## 1. Base de datos Turso (gratis)
 
-Ya está en la app:
-
-1. Inicia sesión como `admin` / `Admi123`
-2. Menú **Usuarios** o Panel → **+ Usuario**
-3. Rellena usuario, nombre, contraseña y rol (`operador` o `admin`)
-
----
-
-## 2. Frontend en Vercel
-
-1. Conecta el repo en [vercel.com](https://vercel.com)
-2. **Root Directory:** `frontend`
-3. **Environment variable:**
-   - `VITE_API_URL` = `https://TU-API.onrender.com/api`
-4. Deploy
-
-El archivo `frontend/vercel.json` ya configura SPA y build de Vite.
+1. Crea cuenta en [turso.tech](https://turso.tech).
+2. Crea una base (ej. `jeniffer`).
+3. Copia:
+   - **URL** → `libsql://...`
+   - **Auth token** → token de la base
 
 ---
 
-## 3. Backend en Render (recomendado)
+## 2. Proyecto en Vercel
 
-1. Crea un **Web Service** desde el mismo repo
-2. Usa `render.yaml` (root del repo) o configura manualmente:
-   - Root: `backend`
-   - Build: `npm install && npm run build && npx prisma db push`
-   - Start: `npm start`
-3. Variables de entorno:
-   - `FRONTEND_URL` = `https://tu-app.vercel.app`
-   - `DATABASE_URL` = ver sección Turso abajo (mejor) o `file:./prisma/dev.db`
+1. [vercel.com](https://vercel.com) → Importar repo `jeniffer-facturas`.
+2. **Root Directory:** raíz del repo (no `frontend`).
+3. Vercel detecta `vercel.json` en la raíz.
 
-Copia la URL del servicio (ej. `https://jeniffer-api.onrender.com`) y ponla en `VITE_API_URL` en Vercel.
+### Variables de entorno (Production)
 
----
+| Variable | Valor |
+|----------|--------|
+| `DATABASE_URL` | `libsql://...` (Turso) |
+| `LIBSQL_AUTH_TOKEN` | Token de Turso |
+| `FRONTEND_URL` | `https://jeniffer-facturas.vercel.app` (tu dominio Vercel) |
+| `NODE_ENV` | `production` |
 
-## 4. Base de datos Turso (opcional, mejor para nube)
+**No** configures `VITE_API_URL` (o déjala vacía): el frontend usa `/api` en el mismo dominio.
 
-El proyecto ya usa el adaptador LibSQL de Prisma.
+4. Deploy.
 
-1. Crea una base en [turso.tech](https://turso.tech) (plan gratis)
-2. En Render, configura:
-   - `DATABASE_URL` = URL `libsql://...` de Turso
-   - `LIBSQL_AUTH_TOKEN` si Turso lo exige (según tu cuenta)
-3. Ejecuta `npx prisma db push` en el build (ya está en `render.yaml`)
-
-Para migrar datos locales: exporta/importa o usa el backup desde el panel admin.
+El build ejecuta `prisma db push` y seed de usuarios/catálogos en el primer arranque.
 
 ---
 
-## 5. Desarrollo local
+## 3. Usuarios iniciales
+
+Tras el primer deploy, inicia sesión con los usuarios del archivo `usuarios` (ej. `admin` / `Admi123`).
+
+---
+
+## 4. Desarrollo local
 
 ```bash
 npm run dev
 ```
 
-- Web: http://localhost:3021
+- Web: http://localhost:3021 (proxy `/api` → 3020)
 - API: http://localhost:3020
+- BD local: `backend/prisma/dev.db`
 
 ---
 
-## Resumen de URLs
+## 5. Schedulers (BCV / alertas)
 
-| Componente | Dónde | Coste típico |
-|------------|--------|--------------|
-| Frontend | Vercel | Gratis |
-| API | Render | Gratis (con limitaciones) |
-| BD | Turso o SQLite en Render | Gratis |
+En Vercel serverless no hay procesos en background. Las tasas BCV se actualizan al usar la app o puedes añadir un **Vercel Cron** más adelante.
 
-Total: **ligero y sin servidor propio**, adecuado para uso interno de Jeniffer.
+---
+
+## Alternativa: Render + Vercel
+
+Si prefieres API siempre encendida en Render, ver `render.yaml` y despliega solo `frontend` en Vercel con `VITE_API_URL=https://tu-api.onrender.com/api`.
+
+---
+
+## Resumen
+
+| Opción | Frontend | API | BD |
+|--------|----------|-----|-----|
+| **Vercel solo (recomendado)** | Vercel | Vercel `/api` | Turso |
+| Híbrido | Vercel | Render | Turso o SQLite Render |

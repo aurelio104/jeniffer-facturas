@@ -1,7 +1,17 @@
 {
-  "buildCommand": "npm run build:frontend",
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "npm run build:vercel",
   "outputDirectory": "frontend/dist",
   "installCommand": "npm install",
   "framework": null,
-  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+  "functions": {
+    "api/index.ts": {
+      "maxDuration": 30,
+      "includeFiles": "backend/dist/**"
+    }
+  },
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api" },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
 }

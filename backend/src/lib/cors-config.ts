@@ -10,6 +10,10 @@ export function buildCorsOptions(): cors.CorsOptions {
   const frontend = process.env.FRONTEND_URL?.trim();
   if (frontend) allowed.add(normalizeOrigin(frontend));
 
+  if (process.env.VERCEL_URL) {
+    allowed.add(`https://${process.env.VERCEL_URL}`);
+  }
+
   for (const raw of process.env.CORS_ORIGINS?.split(',') ?? []) {
     const o = raw.trim();
     if (o) allowed.add(normalizeOrigin(o));
@@ -21,6 +25,7 @@ export function buildCorsOptions(): cors.CorsOptions {
 
   const localhostRe = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/;
   const tunnelRe = /^https:\/\/[a-z0-9-]+\.trycloudflare\.com$/;
+  const vercelAppRe = /^https:\/\/[a-z0-9-]+(-[a-z0-9-]+)*\.vercel\.app$/i;
 
   return {
     origin(origin, cb) {
@@ -29,6 +34,7 @@ export function buildCorsOptions(): cors.CorsOptions {
       const o = normalizeOrigin(origin);
       if (allowed.has(o)) return cb(null, true);
       if (localhostRe.test(o)) return cb(null, true);
+      if (process.env.VERCEL && vercelAppRe.test(o)) return cb(null, true);
       if (allowTunnel && tunnelRe.test(o)) return cb(null, true);
       cb(null, false);
     }
