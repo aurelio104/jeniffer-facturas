@@ -17,7 +17,7 @@ echo "[jeniffer] DATABASE_URL=$DATABASE_URL"
 echo "[jeniffer] PORT=$PORT FRONTEND_URL=${FRONTEND_URL:-}"
 
 cd /app/backend
-npx prisma db push --skip-generate 2>&1 || {
+npx prisma db push 2>&1 || {
   echo "[jeniffer] prisma db push falló — verifique volumen y permisos en $DATA_DIR"
   exit 1
 }
