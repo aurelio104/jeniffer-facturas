@@ -12,6 +12,7 @@ import {
   aplicarAnticipo
 } from '../services/pagos-service.js';
 import { suggestPagoPorRif } from '../services/factura-suggest.js';
+import { construirMaestra } from '../services/maestra.js';
 import { refreshAlertasDebounced } from '../services/scheduler.js';
 import { paramString } from '../lib/params.js';
 
@@ -57,6 +58,37 @@ router.get('/saldo/:facturaId', async (req, res) => {
   const saldo = await calcularSaldoFactura(req.params.facturaId);
   if (!saldo) return res.status(404).json({ error: 'Factura no encontrada' });
   res.json(saldo);
+});
+
+router.get('/facturas-pendientes', async (req, res) => {
+  const rif = String(req.query.rif ?? '').trim();
+  if (!rif) return res.status(400).json({ error: 'rif requerido' });
+  const maestra = await construirMaestra(rif);
+  const pendientes = maestra
+    .filter((r) => r.saldoBs > 0.01)
+    .map((r) => ({
+      id: r.id,
+      tipo: r.tipo,
+      numero: r.numero,
+      documento: `${r.tipo}-${r.numero}`,
+      saldoBs: r.saldoBs,
+      saldoUsd: r.saldoUsd,
+      estado: r.estado
+    }));
+  res.json(pendientes);
+});
+
+router.get('/check-referencia', async (req, res) => {
+  const referencia = String(req.query.referencia ?? '').trim();
+  const banco = String(req.query.banco ?? '').trim();
+  const rif = String(req.query.rif ?? '').trim();
+  if (!referencia || !banco || !rif) {
+    return res.status(400).json({ error: 'referencia, banco y rif requeridos' });
+  }
+  const dup = await prisma.pago.findFirst({
+    where: { referencia, banco, rif }
+  });
+  res.json({ duplicada: Boolean(dup), id: dup?.id });
 });
 
 router.post('/', async (req, res) => {

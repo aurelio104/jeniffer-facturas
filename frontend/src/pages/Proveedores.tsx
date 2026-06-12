@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { facturaNuevaUrl } from '../lib/navigation';
 import { HeroTemplate } from '../components/HeroTemplate';
 import { AppNav } from '../components/AppNav';
 import { PageHeader } from '../components/PageHeader';
@@ -15,6 +17,9 @@ const empty: Partial<Proveedor> = {
 };
 
 export function Proveedores() {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const returnTo = searchParams.get('returnTo') ?? '';
   const [list, setList] = useState<Proveedor[]>([]);
   const [form, setForm] = useState<Partial<Proveedor>>(empty);
   const [editing, setEditing] = useState<string | null>(null);
@@ -52,6 +57,7 @@ export function Proveedores() {
     e.preventDefault();
     setMsg('');
     try {
+      const savedRif = form.rif?.trim() ?? '';
       if (editing) {
         await proveedoresApi.update(editing, form);
         setMsg('Proveedor actualizado');
@@ -62,6 +68,11 @@ export function Proveedores() {
       setForm(empty);
       setEditing(null);
       load();
+      if (!editing && returnTo && savedRif) {
+        setModalOpen(false);
+        navigate(facturaNuevaUrl(savedRif));
+        return;
+      }
       setTimeout(() => setModalOpen(false), 600);
     } catch (err: unknown) {
       const ax = err as { response?: { data?: { error?: string } } };

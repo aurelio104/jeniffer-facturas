@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Bell } from 'lucide-react';
 import { alertasApi, type Alerta } from '../services/api';
+import { pagosUrl } from '../lib/navigation';
+import { subscribeAppRefresh } from '../lib/app-refresh';
 import { MoneyValue } from './MoneyValue';
 
 function tipoBadge(tipo: string) {
@@ -25,7 +27,11 @@ export function AlertBell() {
   useEffect(() => {
     load();
     const t = setInterval(load, 60000);
-    return () => clearInterval(t);
+    const unsub = subscribeAppRefresh(load);
+    return () => {
+      clearInterval(t);
+      unsub();
+    };
   }, []);
 
   useEffect(() => {
@@ -88,9 +94,22 @@ export function AlertBell() {
                   </div>
                   <div className="flex flex-col gap-1 shrink-0">
                     {a.facturaId && (
-                      <Link to={`/facturas/${a.facturaId}`} className="link-green text-xs" onClick={() => setOpen(false)}>
-                        Ver
-                      </Link>
+                      <>
+                        <Link
+                          to={pagosUrl({ facturaId: a.facturaId, rif: a.rif })}
+                          className="link-green text-xs"
+                          onClick={() => setOpen(false)}
+                        >
+                          Pagar
+                        </Link>
+                        <Link
+                          to={`/facturas/${a.facturaId}`}
+                          className="text-xs text-muted"
+                          onClick={() => setOpen(false)}
+                        >
+                          Editar
+                        </Link>
+                      </>
                     )}
                     {!a.leida && (
                       <button type="button" className="link-rose text-xs" onClick={() => leer(a.id)}>

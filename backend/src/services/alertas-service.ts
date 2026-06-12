@@ -1,7 +1,14 @@
 import { prisma } from '../lib/prisma.js';
 import { construirMaestra } from './maestra.js';
 
-const POR_VENCER_DIAS = 7;
+async function diasPorVencerConfig(): Promise<number> {
+  const row = await prisma.configItem.findFirst({
+    where: { categoria: 'alerta_config' },
+    orderBy: { orden: 'asc' }
+  });
+  const n = parseInt(row?.valor ?? '7', 10);
+  return Number.isFinite(n) && n > 0 ? n : 7;
+}
 
 function diasParaVencer(fecha: Date, diasCredito: number): number {
   const venc = new Date(fecha);
@@ -58,6 +65,7 @@ async function upsertAlerta(input: AlertaInput) {
 
 /** Regenera alertas operativas desde BD maestra (prioridad = saldo × urgencia). */
 export async function regenerarAlertas(): Promise<number> {
+  const porVencerDias = await diasPorVencerConfig();
   const facturas = await prisma.factura.findMany();
   const maestra = await construirMaestra();
   const maestraMap = new Map(maestra.map((r) => [r.id, r]));
@@ -84,10 +92,10 @@ export async function regenerarAlertas(): Promise<number> {
         diasVencida: row.diasVencida
       });
       count++;
-    } else if (diasRest >= 0 && diasRest <= POR_VENCER_DIAS) {
+    } else if (diasRest >= 0 && diasRest <= porVencerDias) {
       await upsertAlerta({
         tipo: 'POR_VENCER',
-        prioridad: row.saldoBs * (1 + (POR_VENCER_DIAS - diasRest) / 10),
+        prioridad: row.saldoBs * (1 + (porVencerDias - diasRest) / 10),
         titulo: `${doc} vence en ${diasRest} días`,
         detalle: `${row.proveedor} · saldo ${row.saldoBs.toFixed(2)} Bs`,
         facturaId: f.id,
@@ -147,7 +155,7 @@ export async function regenerarAlertas(): Promise<number> {
     }
     if (
       a.tipo === 'POR_VENCER' &&
-      (row.diasVencida > 0 || diasParaVencer(fac.fecha, fac.diasCredito) > POR_VENCER_DIAS)
+      (row.diasVencida > 0 || diasParaVencer(fac.fecha, fac.diasCredito) > porVencerDias)
     ) {
       await prisma.alerta.delete({ where: { id: a.id } });
     }

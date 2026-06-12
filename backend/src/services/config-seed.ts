@@ -3,7 +3,8 @@ import { prisma } from '../lib/prisma.js';
 const DEFAULTS: Record<string, string[]> = {
   tipo_islr: ['PNR', 'PJD', 'PJND', 'PNNR'],
   retencion_iva: ['100%', '75%', 'EXENTA'],
-  tipo_doc: ['FAC', 'REC', 'NE']
+  tipo_doc: ['FAC', 'REC', 'NE'],
+  alerta_config: ['7']
 };
 
 export async function seedDefaultCatalogs(): Promise<void> {

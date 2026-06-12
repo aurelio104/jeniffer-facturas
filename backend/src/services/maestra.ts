@@ -201,6 +201,7 @@ export async function dashboardStats() {
     .slice(0, 8)
     .map((r) => ({
       id: r.id,
+      rif: r.rif,
       proveedor: r.proveedor,
       documento: `${r.tipo}-${r.numero}`,
       saldoBs: r.saldoBs

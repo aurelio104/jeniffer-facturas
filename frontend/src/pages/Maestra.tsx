@@ -7,6 +7,8 @@ import { MoneyValue } from '../components/MoneyValue';
 import { Modal } from '../components/Modal';
 import { FilterSelect } from '../components/FilterSelect';
 import { maestraApi, proveedoresApi, facturasApi, type MaestraRow } from '../services/api';
+import { pagosUrl } from '../lib/navigation';
+import { emitAppRefresh, subscribeAppRefresh } from '../lib/app-refresh';
 
 function estadoBadge(estado: string) {
   const cls = estado === 'PAGADA' ? 'badge-pagada' : estado === 'PARCIAL' ? 'badge-parcial' : 'badge-pendiente';
@@ -24,12 +26,14 @@ export function Maestra() {
   useEffect(() => {
     load();
     proveedoresApi.list().then((p) => setProveedores(p.map((x) => ({ rif: x.rif, nombre: x.nombre }))));
-  }, []);
+    return subscribeAppRefresh(() => load(rifFilter || undefined));
+  }, [rifFilter]);
 
   const toggleCheck = async (id: string, field: 'recibidoFisico' | 'retencionEnviada', current: string) => {
     const val = current === 'Sí' ? 'Pendiente' : 'Sí';
     await facturasApi.checklist(id, { [field]: val });
     load(rifFilter || undefined);
+    emitAppRefresh();
     if (selected?.id === id) {
       setSelected((s) => s ? { ...s, [field]: val } : null);
     }
@@ -141,7 +145,10 @@ export function Maestra() {
             <Link to={`/facturas/${selected?.id}`} className="ios-btn ios-btn-ghost ios-btn-sm no-underline">
               Editar
             </Link>
-            <Link to="/pagos" className="ios-btn ios-btn-primary ios-btn-sm no-underline">
+            <Link
+              to={selected ? pagosUrl({ facturaId: selected.id, rif: selected.rif }) : '/pagos'}
+              className="ios-btn ios-btn-primary ios-btn-sm no-underline"
+            >
               Registrar pago
             </Link>
           </>

@@ -7,6 +7,8 @@ import { MoneyValue } from '../components/MoneyValue';
 import { Modal } from '../components/Modal';
 import { maestraApi, tasasApi, adminApi, downloadBlob, type DashboardStats } from '../services/api';
 import { isAdmin } from '../lib/auth';
+import { pagosUrl } from '../lib/navigation';
+import { subscribeAppRefresh } from '../lib/app-refresh';
 
 export function Dashboard() {
   const [kpi, setKpi] = useState<DashboardStats | null>(null);
@@ -15,13 +17,18 @@ export function Dashboard() {
   const [tasaFuente, setTasaFuente] = useState<string | null>(null);
   const [showSaldos, setShowSaldos] = useState(false);
 
-  useEffect(() => {
+  const refreshKpi = () => {
     maestraApi.dashboard().then(setKpi);
     tasasApi.hoy().then((t) => {
       setTasa(t.valor);
       setTasaEur(t.valorEur ?? null);
       setTasaFuente(t.nombre ?? t.fuente ?? null);
     });
+  };
+
+  useEffect(() => {
+    refreshKpi();
+    return subscribeAppRefresh(refreshKpi);
   }, []);
 
   const backup = async () => {
@@ -100,6 +107,10 @@ export function Dashboard() {
                     <td className="col-text">{r.proveedor}</td>
                     <td>
                       <Link to={`/facturas/${r.id}`} className="link-green">{r.documento}</Link>
+                      {' · '}
+                      <Link to={pagosUrl({ facturaId: r.id, rif: r.rif })} className="link-muted text-xs">
+                        Pagar
+                      </Link>
                     </td>
                     <td className="col-num"><MoneyValue value={r.saldoBs} /></td>
                   </tr>

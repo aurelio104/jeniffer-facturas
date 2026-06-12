@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { HeroTemplate } from '../components/HeroTemplate';
 import { AppNav } from '../components/AppNav';
 import { PageHeader } from '../components/PageHeader';
@@ -28,11 +28,16 @@ import {
   round2,
   totalBsFromForm
 } from '../lib/factura-calc';
+import { emitAppRefresh } from '../lib/app-refresh';
+import { proveedoresUrl } from '../lib/navigation';
+import { useFormShortcuts } from '../hooks/useFormShortcuts';
 
 type ConceptoRow = { concepto: string; monto: number };
 
 export function FacturaForm() {
   const { id } = useParams();
+  const [searchParams] = useSearchParams();
+  const deepRif = searchParams.get('rif') ?? '';
   const navigate = useNavigate();
   const isEdit = Boolean(id);
 
@@ -240,6 +245,11 @@ export function FacturaForm() {
     } catch { /* ignore */ }
   };
 
+  useEffect(() => {
+    if (!deepRif || isEdit || locked || rif === deepRif || proveedores.length === 0) return;
+    onRifChange(deepRif);
+  }, [deepRif, isEdit, locked, proveedores.length, rif]);
+
   const setConceptoRow = (index: number, conceptoVal: string) => {
     const copy = [...conceptos];
     copy[index] = { concepto: conceptoVal, monto: 0 };
@@ -266,6 +276,13 @@ export function FacturaForm() {
     }
     setConceptos(conceptos.filter((_, i) => i !== index));
   };
+
+  const trySubmit = useCallback(() => {
+    const form = document.getElementById('factura-form') as HTMLFormElement | null;
+    form?.requestSubmit();
+  }, []);
+
+  useFormShortcuts(trySubmit, !locked);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -302,8 +319,10 @@ export function FacturaForm() {
       if (isEdit && id) {
         await facturasApi.update(id, payload);
         setMsg('Factura actualizada');
+        emitAppRefresh();
       } else {
         await facturasApi.create(payload);
+        emitAppRefresh();
         navigate('/facturas');
       }
     } catch (err: unknown) {
@@ -329,7 +348,7 @@ export function FacturaForm() {
         }
       />
 
-      <form onSubmit={submit} className="ios-glass-card form-grid">
+      <form id="factura-form" onSubmit={submit} className="ios-glass-card form-grid">
         <FormField as="select" label="Tipo" value={tipo} onChange={(e) => setTipo(e.target.value)} options={
           tiposDoc.map((t) => ({ value: t, label: t }))
         } />
@@ -344,6 +363,13 @@ export function FacturaForm() {
           required
         />
         <FormField label="Proveedor" value={proveedorNombre} onChange={(e) => setProveedorNombre(e.target.value)} disabled={locked} required />
+        {!locked && (
+          <div className="form-grid-span-3">
+            <Link to={proveedoresUrl('/facturas/nueva')} className="link-green text-sm">
+              + Registrar proveedor nuevo
+            </Link>
+          </div>
+        )}
         {rif && (
           <div className="form-grid-span-3 fiscal-badges">
             <span className="fiscal-badge">Tipo ISLR: <strong>{tipoIslrLabel}</strong></span>

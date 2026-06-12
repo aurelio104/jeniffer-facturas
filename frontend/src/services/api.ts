@@ -157,7 +157,7 @@ export type DashboardStats = {
   sinFisico: number;
   sinRetencion: number;
   vencidas: number;
-  topSaldos: Array<{ id: string; proveedor: string; documento: string; saldoBs: number }>;
+  topSaldos: Array<{ id: string; rif: string; proveedor: string; documento: string; saldoBs: number }>;
 };
 
 export type TabIslr = {
@@ -288,7 +288,23 @@ export const pagosApi = {
       banco: string;
       anticiposAbiertos: number;
       facturasPendientes: number;
-    }>(`/pagos/suggest/${rif}`).then((r) => r.data)
+    }>(`/pagos/suggest/${rif}`).then((r) => r.data),
+  facturasPendientes: (rif: string) =>
+    api.get<
+      Array<{
+        id: string;
+        tipo: string;
+        numero: string;
+        documento: string;
+        saldoBs: number;
+        saldoUsd: number | null;
+        estado: string;
+      }>
+    >('/pagos/facturas-pendientes', { params: { rif } }).then((r) => r.data),
+  checkReferencia: (referencia: string, banco: string, rif: string) =>
+    api.get<{ duplicada: boolean; id?: string }>('/pagos/check-referencia', {
+      params: { referencia, banco, rif }
+    }).then((r) => r.data)
 };
 
 export type TasasDia = {

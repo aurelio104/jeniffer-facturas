@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { HeroTemplate } from '../components/HeroTemplate';
 import { AppNav } from '../components/AppNav';
 import { PageHeader } from '../components/PageHeader';
@@ -16,22 +17,40 @@ import {
   maestraApi,
   type Pago,
   type Proveedor,
-  type Factura,
-  type SaldoFactura
+  type SaldoFactura,
+  fmtBs
 } from '../services/api';
 import { AdminOnly } from '../components/AdminOnly';
+import { emitAppRefresh } from '../lib/app-refresh';
+import { useFormShortcuts } from '../hooks/useFormShortcuts';
+
+type FacturaPendiente = {
+  id: string;
+  tipo: string;
+  numero: string;
+  documento: string;
+  saldoBs: number;
+  saldoUsd: number | null;
+  estado: string;
+};
 
 export function Pagos() {
+  const [searchParams] = useSearchParams();
+  const deepFacturaId = searchParams.get('facturaId') ?? '';
+  const deepRif = searchParams.get('rif') ?? '';
+
   const [pagos, setPagos] = useState<Pago[]>([]);
   const [anticipos, setAnticipos] = useState<Pago[]>([]);
   const [proveedores, setProveedores] = useState<Proveedor[]>([]);
-  const [facturas, setFacturas] = useState<Factura[]>([]);
+  const [facturasPendientes, setFacturasPendientes] = useState<FacturaPendiente[]>([]);
   const [bancos, setBancos] = useState<string[]>([]);
   const [tasa, setTasa] = useState(0);
   const [saldo, setSaldo] = useState<SaldoFactura | null>(null);
   const [msg, setMsg] = useState('');
   const [hint, setHint] = useState('');
+  const [refWarning, setRefWarning] = useState('');
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [anticipoPrompt, setAnticipoPrompt] = useState<Pago | null>(null);
   const [editPago, setEditPago] = useState<Pago | null>(null);
   const [editForm, setEditForm] = useState({
     fecha: '',
@@ -45,6 +64,20 @@ export function Pagos() {
     observacion: ''
   });
 
+  const [fecha, setFecha] = useState(new Date().toISOString().slice(0, 10));
+  const [rif, setRif] = useState(deepRif);
+  const [proveedor, setProveedor] = useState('');
+  const [documento, setDocumento] = useState('');
+  const [facturaId, setFacturaId] = useState(deepFacturaId);
+  const [banco, setBanco] = useState('');
+  const [referencia, setReferencia] = useState('');
+  const [pagadoBs, setPagadoBs] = useState(0);
+  const [pagadoUsd, setPagadoUsd] = useState(0);
+  const [observacion, setObservacion] = useState('');
+  const [esAnticipo, setEsAnticipo] = useState(false);
+  const [anticipoId, setAnticipoId] = useState('');
+  const [deepLinkApplied, setDeepLinkApplied] = useState(false);
+
   const onPagadoBsChange = (n: number) => {
     setPagadoBs(n);
     if (tasa > 0) setPagadoUsd(n / tasa);
@@ -55,19 +88,6 @@ export function Pagos() {
     if (tasa > 0) setPagadoBs(n * tasa);
   };
 
-  const [fecha, setFecha] = useState(new Date().toISOString().slice(0, 10));
-  const [rif, setRif] = useState('');
-  const [proveedor, setProveedor] = useState('');
-  const [documento, setDocumento] = useState('');
-  const [facturaId, setFacturaId] = useState('');
-  const [banco, setBanco] = useState('');
-  const [referencia, setReferencia] = useState('');
-  const [pagadoBs, setPagadoBs] = useState(0);
-  const [pagadoUsd, setPagadoUsd] = useState(0);
-  const [observacion, setObservacion] = useState('');
-  const [esAnticipo, setEsAnticipo] = useState(false);
-  const [anticipoId, setAnticipoId] = useState('');
-
   const load = () => {
     pagosApi.list().then(setPagos);
     pagosApi.anticipos().then(setAnticipos);
@@ -76,10 +96,23 @@ export function Pagos() {
   useEffect(() => {
     load();
     proveedoresApi.list().then(setProveedores);
-    facturasApi.list().then(setFacturas);
     tasasApi.hoy().then((t) => setTasa(t.valor));
     maestraApi.config('banco').then((c) => setBancos(c.map((x) => x.valor)));
   }, []);
+
+  useEffect(() => {
+    if (!fecha) return;
+    tasasApi.porFecha(fecha).then((t) => setTasa(t.valor)).catch(() => {});
+  }, [fecha]);
+
+  const loadPendientes = async (v: string) => {
+    if (!v) {
+      setFacturasPendientes([]);
+      return;
+    }
+    const list = await pagosApi.facturasPendientes(v);
+    setFacturasPendientes(list);
+  };
 
   const onRif = async (v: string) => {
     setRif(v);
@@ -89,29 +122,47 @@ export function Pagos() {
       setProveedor(p.nombre);
       setBanco(p.banco ?? '');
     }
-    facturasApi.list(v).then(setFacturas);
     pagosApi.anticipos(v).then(setAnticipos);
+    await loadPendientes(v);
     if (!v) return;
     try {
       const s = await pagosApi.suggest(v);
       if (s.banco && !banco) setBanco(s.banco);
       const parts: string[] = [];
-      if (s.facturasPendientes > 0) parts.push(`${s.facturasPendientes} factura(s) del proveedor`);
+      if (s.facturasPendientes > 0) parts.push(`${s.facturasPendientes} factura(s) pendiente(s)`);
       if (s.anticiposAbiertos > 0) parts.push(`${s.anticiposAbiertos} anticipo(s) abierto(s)`);
       if (parts.length) setHint(parts.join(' · '));
     } catch { /* ignore */ }
   };
 
+  useEffect(() => {
+    if (deepLinkApplied) return;
+    if (deepRif) {
+      onRif(deepRif).then(() => setDeepLinkApplied(true));
+      return;
+    }
+    if (deepFacturaId) {
+      facturasApi.get(deepFacturaId).then((f) => onRif(f.rif)).then(() => setDeepLinkApplied(true));
+    }
+  }, [deepRif, deepFacturaId, deepLinkApplied]);
+
+  useEffect(() => {
+    if (!deepFacturaId || !deepLinkApplied || facturasPendientes.length === 0) return;
+    const exists = facturasPendientes.some((f) => f.id === deepFacturaId);
+    if (exists) onFacturaSelect(deepFacturaId);
+  }, [deepFacturaId, deepLinkApplied, facturasPendientes]);
+
   const onFacturaSelect = async (id: string) => {
     setFacturaId(id);
     setEsAnticipo(false);
+    setAnticipoPrompt(null);
     if (!id) {
       setDocumento('');
       setSaldo(null);
       return;
     }
-    const f = facturas.find((x) => x.id === id);
-    if (f) setDocumento(`${f.tipo}-${f.numero}`);
+    const f = facturasPendientes.find((x) => x.id === id);
+    if (f) setDocumento(f.documento);
   };
 
   useEffect(() => {
@@ -128,8 +179,42 @@ export function Pagos() {
     });
   }, [facturaId, esAnticipo, tasa]);
 
+  useEffect(() => {
+    if (!facturaId || esAnticipo || anticipos.length === 0 || anticipoId) return;
+    const delRif = anticipos.filter((a) => a.rif === rif);
+    if (delRif.length > 0) setAnticipoPrompt(delRif[0]);
+  }, [facturaId, esAnticipo, anticipos, rif, anticipoId]);
+
+  useEffect(() => {
+    if (!referencia.trim() || !banco.trim() || !rif.trim()) {
+      setRefWarning('');
+      return;
+    }
+    const t = setTimeout(() => {
+      pagosApi.checkReferencia(referencia.trim(), banco.trim(), rif.trim()).then((r) => {
+        setRefWarning(r.duplicada ? 'Referencia ya registrada para este banco y RIF' : '');
+      });
+    }, 400);
+    return () => clearTimeout(t);
+  }, [referencia, banco, rif]);
+
+  const facturaOptions = useMemo(
+    () =>
+      facturasPendientes.map((f) => ({
+        value: f.id,
+        key: f.id,
+        label: `${f.documento} · ${fmtBs(f.saldoBs)} pendiente`
+      })),
+    [facturasPendientes]
+  );
+
   const doSubmit = async () => {
     setMsg('');
+    if (refWarning) {
+      setMsg(refWarning);
+      setConfirmOpen(false);
+      return;
+    }
     try {
       await pagosApi.create({
         fecha,
@@ -152,7 +237,13 @@ export function Pagos() {
       setPagadoBs(0);
       setPagadoUsd(0);
       setAnticipoId('');
+      setAnticipoPrompt(null);
+      setFacturaId('');
+      setDocumento('');
+      setSaldo(null);
       load();
+      if (rif) loadPendientes(rif);
+      emitAppRefresh();
     } catch (err: unknown) {
       const ax = err as { response?: { data?: { error?: string } } };
       setMsg(ax.response?.data?.error ?? 'Error');
@@ -162,8 +253,22 @@ export function Pagos() {
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (refWarning) {
+      setMsg(refWarning);
+      return;
+    }
     setConfirmOpen(true);
   };
+
+  const trySubmit = useCallback(() => {
+    if (refWarning) {
+      setMsg(refWarning);
+      return;
+    }
+    setConfirmOpen(true);
+  }, [refWarning]);
+
+  useFormShortcuts(trySubmit);
 
   const openEdit = (p: Pago) => {
     setEditPago(p);
@@ -196,18 +301,43 @@ export function Pagos() {
     });
     setEditPago(null);
     load();
+    emitAppRefresh();
   };
 
   const removePago = async (p: Pago) => {
     if (!confirm(`¿Eliminar pago ref ${p.referencia}?`)) return;
     await pagosApi.delete(p.id);
     load();
+    emitAppRefresh();
+  };
+
+  const aplicarAnticipoSugerido = () => {
+    if (!anticipoPrompt) return;
+    setAnticipoId(anticipoPrompt.id);
+    setAnticipoPrompt(null);
+    if (saldo && anticipoPrompt.pagadoBs) {
+      const aplicar = Math.min(saldo.saldoBs, anticipoPrompt.pagadoBs ?? 0);
+      if (aplicar > 0) {
+        setPagadoBs(aplicar);
+        if (tasa > 0) setPagadoUsd(aplicar / tasa);
+      }
+    }
   };
 
   return (
     <HeroTemplate>
       <AppNav />
-      <PageHeader title="Registro de pagos" subtitle={hint || 'Pagos, parciales y anticipos'} />
+      <PageHeader
+        title="Registro de pagos"
+        subtitle={hint || 'Pagos, parciales y anticipos'}
+        actions={
+          tasa > 0 ? (
+            <span className="num-value tabular-nums text-sm text-muted">
+              Tasa {fecha}: <MoneyValue value={tasa} size="sm" /> Bs/USD
+            </span>
+          ) : undefined
+        }
+      />
 
       <form onSubmit={submit} className="ios-glass-card form-grid">
         <FormField label="Fecha" type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} />
@@ -235,16 +365,12 @@ export function Pagos() {
         {!esAnticipo && (
           <FormField
             as="select"
-            label="Documento"
+            label="Documento (solo con saldo)"
             value={facturaId}
             onChange={(e) => onFacturaSelect(e.target.value)}
             options={[
-              { value: '', label: 'Seleccionar factura…', key: 'doc-empty' },
-              ...facturas.map((f) => ({
-                value: f.id,
-                key: f.id,
-                label: `${f.tipo}-${f.numero} · ${f.rif}`
-              }))
+              { value: '', label: rif ? 'Seleccionar factura pendiente…' : 'Seleccione RIF primero', key: 'doc-empty' },
+              ...facturaOptions
             ]}
           />
         )}
@@ -256,6 +382,21 @@ export function Pagos() {
           </div>
         )}
 
+        {anticipoPrompt && !esAnticipo && !anticipoId && (
+          <div className="form-grid-span-3 alert-info flex flex-wrap items-center gap-2">
+            <span>
+              Anticipo abierto ref <strong>{anticipoPrompt.referencia}</strong>
+              ({fmtBs(anticipoPrompt.pagadoBs ?? 0)} Bs). ¿Aplicar a esta factura?
+            </span>
+            <button type="button" className="ios-btn ios-btn-primary ios-btn-sm" onClick={aplicarAnticipoSugerido}>
+              Aplicar anticipo
+            </button>
+            <button type="button" className="link-muted" onClick={() => setAnticipoPrompt(null)}>
+              Omitir
+            </button>
+          </div>
+        )}
+
         {!esAnticipo && anticipos.length > 0 && (
           <FormField as="select" label="Aplicar anticipo" value={anticipoId}
             onChange={(e) => setAnticipoId(e.target.value)} options={[
@@ -263,7 +404,7 @@ export function Pagos() {
               ...anticipos.map((a) => ({
                 value: a.id,
                 key: a.id,
-                label: `${a.referencia} — ${a.pagadoBs ?? 0} Bs`
+                label: `${a.referencia} — ${fmtBs(a.pagadoBs ?? 0)} Bs`
               }))
             ]} />
         )}
@@ -273,13 +414,20 @@ export function Pagos() {
           ...bancos.map((b) => ({ value: b, label: b })),
           ...(banco && !bancos.includes(banco) ? [{ value: banco, label: banco }] : [])
         ]} />
-        <FormField label="Referencia" value={referencia} onChange={(e) => setReferencia(e.target.value)} required />
+        <FormField
+          label="Referencia"
+          value={referencia}
+          onChange={(e) => setReferencia(e.target.value)}
+          required
+        />
+        {refWarning && <p className="form-grid-span-3 alert-error">{refWarning}</p>}
         <MoneyInputField label="Pagado Bs" value={pagadoBs} onChange={onPagadoBsChange} required />
         <MoneyInputField label="Pagado USD" value={pagadoUsd} onChange={onPagadoUsdChange} />
         <FormField label="Observación" value={observacion} onChange={(e) => setObservacion(e.target.value)} />
 
         <div className="form-grid-span-3 form-actions">
           <button type="submit" className="ios-btn ios-btn-primary">Registrar</button>
+          <span className="text-muted text-sm">Ctrl+S para confirmar</span>
           {msg && <span className="alert-success">{msg}</span>}
         </div>
       </form>
