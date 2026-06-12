@@ -27,7 +27,9 @@ import {
   isTipoSinIslr,
   matchConceptoTabla,
   newConceptoRow,
+  prepararNuevaLineaIslr,
   round2,
+  sumMontosConceptos,
   totalBsFromForm,
   type ConceptoRow
 } from '../lib/factura-calc';
@@ -164,13 +166,13 @@ export function FacturaForm() {
   }, [sinIslr]);
 
   useEffect(() => {
-    if (locked || isEdit || sinIslr || totalBsForm <= 0) return;
+    if (locked || isEdit || sinIslr || totalBsForm <= 0 || conceptos.length > 1) return;
     const filled = autollenarSiUnSoloConcepto(conceptos, totalBsForm, exento, tipo);
     const same = filled.every(
       (c, i) => c.concepto === conceptos[i]?.concepto && c.monto === conceptos[i]?.monto
     );
     if (!same) setConceptos(filled);
-  }, [total, exento, moneda, tasa, tipo, locked, isEdit, sinIslr, totalBsForm]);
+  }, [total, exento, moneda, tasa, tipo, locked, isEdit, sinIslr, totalBsForm, conceptos.length]);
 
   const buildPayload = () => ({
     tipo,
@@ -285,7 +287,15 @@ export function FacturaForm() {
     setConceptos(copy);
   };
 
-  const addConcepto = () => setConceptos([...conceptos, newConceptoRow()]);
+  const addConcepto = () => {
+    const next = prepararNuevaLineaIslr(conceptos, totalBsForm, exento);
+    if (next.length === 2 && conceptos.length === 1) {
+      setMsg('Grabado repartido entre 2 líneas. Ajuste cada monto según el concepto.');
+    } else {
+      setMsg('');
+    }
+    setConceptos(next);
+  };
 
   const removeConcepto = (rowId: string) => {
     if (conceptos.length <= 1) {
@@ -295,7 +305,9 @@ export function FacturaForm() {
     setConceptos(conceptos.filter((c) => c.id !== rowId));
   };
 
-  const lineasConConcepto = conceptos.filter((c) => c.concepto.trim()).length;
+  const grabadoTotal = totalBsForm > 0 ? calcularGrabado(totalBsForm, exento) : 0;
+  const grabadoUsado = sumMontosConceptos(conceptos);
+  const grabadoLibre = Math.max(0, round2(grabadoTotal - grabadoUsado));
 
   const trySubmit = useCallback(() => {
     const form = document.getElementById('factura-form') as HTMLFormElement | null;
@@ -440,8 +452,13 @@ export function FacturaForm() {
         <div className="form-grid-span-3 form-divider">
           <div className="panel-header panel-header-accent-rose" style={{ marginBottom: '0.75rem' }}>
             <h3>Conceptos ISLR</h3>
-            {!sinIslr && lineasConConcepto > 0 && (
-              <span className="panel-meta">{lineasConConcepto} línea(s)</span>
+            {!sinIslr && conceptos.length > 0 && (
+              <span className="panel-meta">
+                {conceptos.length} línea(s)
+                {grabadoTotal > 0 && (
+                  <> · libre {fmtBs(grabadoLibre)} de {fmtBs(grabadoTotal)}</>
+                )}
+              </span>
             )}
             {sinIslr && (
               <p className="text-muted text-sm mt-1">
@@ -495,11 +512,21 @@ export function FacturaForm() {
                         onChange={(e) => setConceptoRow(i, e.target.value)}
                         options={[
                           { value: '', label: '— Seleccionar —' },
-                          ...tabIslr.map((t) => ({
-                            value: t.concepto,
-                            label: t.concepto,
-                            key: `${c.id}-${t.id}`
-                          }))
+                          ...tabIslr
+                            .filter((t) => {
+                              const usedElsewhere = conceptos.some(
+                                (other, j) =>
+                                  j !== i &&
+                                  other.concepto.trim().toLowerCase() ===
+                                    t.concepto.toLowerCase()
+                              );
+                              return !usedElsewhere || c.concepto === t.concepto;
+                            })
+                            .map((t) => ({
+                              value: t.concepto,
+                              label: t.concepto,
+                              key: `${c.id}-${t.id}`
+                            }))
                         ]}
                       />
                       <MoneyInputField
@@ -528,11 +555,11 @@ export function FacturaForm() {
               <button type="button" className="link-green" onClick={addConcepto}>
                 + Otro concepto
               </button>
-              {isEdit && (
-                <span className="text-muted text-sm">
-                  Puede agregar varias líneas ISLR al editar la factura.
-                </span>
-              )}
+              <span className="text-muted text-sm">
+                {grabadoLibre <= 0 && conceptos.length >= 2
+                  ? 'Ajuste los montos de las líneas para liberar grabado antes de agregar otra.'
+                  : 'Seleccione tipo y monto en cada línea. La suma no puede superar el grabado.'}
+              </span>
             </div>
           )}
         </div>

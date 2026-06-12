@@ -99,6 +99,12 @@ export function autollenarSiUnSoloConcepto(
   );
 }
 
+export function sumMontosConceptos(conceptos: ConceptoRow[]) {
+  return round2(
+    conceptos.reduce((s, c) => (c.monto > 0 ? s + c.monto : s), 0)
+  );
+}
+
 export function aplicarMontoSugeridoRow(
   conceptos: ConceptoRow[],
   index: number,
@@ -111,8 +117,39 @@ export function aplicarMontoSugeridoRow(
   if (!row?.concepto.trim()) return conceptos;
 
   const restante = grabadoRestanteIslr(conceptos, totalBs, exentoBs, index);
-  const monto = restante > 0 ? restante : round2(totalBs);
   const copy = [...conceptos];
-  copy[index] = { ...row, monto };
+  // Solo asignar grabado restante; nunca el total de factura en líneas adicionales
+  if (restante > 0) {
+    copy[index] = { ...row, monto: restante };
+  } else if (conceptos.length === 1) {
+    copy[index] = { ...row, monto: round2(totalBs) };
+  } else {
+    copy[index] = { ...row, monto: 0 };
+  }
   return copy;
+}
+
+/** Al agregar otra línea: reparte grabado si la primera línea lo consumió entero. */
+export function prepararNuevaLineaIslr(
+  conceptos: ConceptoRow[],
+  totalBs: number,
+  exentoBs: number
+): ConceptoRow[] {
+  const grabado = calcularGrabado(totalBs, exentoBs);
+  if (grabado <= 0) return [...conceptos, newConceptoRow()];
+
+  const usado = sumMontosConceptos(conceptos);
+  if (
+    conceptos.length === 1 &&
+    conceptos[0].monto > 0 &&
+    usado >= grabado - 0.01
+  ) {
+    const half = round2(grabado / 2);
+    const line1 = { ...conceptos[0], monto: half };
+    const line2 = newConceptoRow({ monto: round2(grabado - half) });
+    return [line1, line2];
+  }
+
+  const restante = Math.max(0, round2(grabado - usado));
+  return [...conceptos, newConceptoRow({ monto: restante > 0 ? restante : 0 })];
 }
