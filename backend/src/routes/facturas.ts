@@ -83,7 +83,7 @@ async function buildFacturaData(input: z.infer<typeof schema>, existingId?: stri
     input.moneda ?? 'Bs'
   );
 
-  return {
+  const data = {
     tipo: input.tipo,
     numero: input.numero,
     rif: input.rif,
@@ -114,6 +114,8 @@ async function buildFacturaData(input: z.infer<typeof schema>, existingId?: stri
     recibidoFisico: input.recibidoFisico ?? 'Pendiente',
     retencionEnviada: input.retencionEnviada ?? 'Pendiente'
   };
+
+  return { data, lineasIslr: islr.lineas };
 }
 
 function round2(n: number) {
@@ -163,12 +165,13 @@ router.post('/preview', async (req, res) => {
   const input = schema.parse(req.body);
   const prov = await prisma.proveedor.findUnique({ where: { rif: input.rif } });
   try {
-    const data = await buildFacturaData(input);
+    const built = await buildFacturaData(input);
     res.json({
-    ...data,
+    ...built.data,
+    lineasIslr: built.lineasIslr,
     tipoIslrAplicado: prov?.tipoIslr ?? 'PNR',
     retencionIvaAplicada: prov?.retencionIva ?? '100%',
-    conceptosIslrNormalizados: JSON.parse(data.detalleIslr ?? '[]')
+    conceptosIslrNormalizados: JSON.parse(built.data.detalleIslr ?? '[]')
     });
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'Error en cálculo';
@@ -189,14 +192,14 @@ router.post('/', async (req, res) => {
   });
   if (dup) return res.status(409).json({ error: 'Factura duplicada' });
 
-  let data;
+  let built;
   try {
-    data = await buildFacturaData(input);
+    built = await buildFacturaData(input);
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'Error en cálculo';
     return res.status(400).json({ error: msg });
   }
-  const f = await prisma.factura.create({ data });
+  const f = await prisma.factura.create({ data: built.data });
   await logAuditoria('FACTURA_CREADA', `${f.tipo}-${f.numero}`, getRequestUser(req));
   refreshAlertasDebounced();
   res.status(201).json(f);
@@ -204,14 +207,14 @@ router.post('/', async (req, res) => {
 
 router.put('/:id', async (req, res) => {
   const input = schema.parse(req.body);
-  let data;
+  let built;
   try {
-    data = await buildFacturaData(input, req.params.id);
+    built = await buildFacturaData(input, req.params.id);
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'Error en cálculo';
     return res.status(400).json({ error: msg });
   }
-  const f = await prisma.factura.update({ where: { id: req.params.id }, data });
+  const f = await prisma.factura.update({ where: { id: req.params.id }, data: built.data });
   await logAuditoria('FACTURA_ACTUALIZADA', `${f.tipo}-${f.numero}`, getRequestUser(req));
   refreshAlertasDebounced();
   res.json(f);

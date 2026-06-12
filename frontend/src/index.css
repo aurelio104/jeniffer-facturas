@@ -972,20 +972,67 @@ body.modal-open .site-header-global {
   border: 1px solid var(--border-subtle);
 }
 
-.concepto-islr-row {
-  margin-bottom: 0.75rem;
-  padding-bottom: 0.75rem;
-  border-bottom: 1px solid var(--border-subtle);
+.concepto-islr-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
 }
 
-.concepto-islr-row:last-of-type {
-  border-bottom: none;
-  margin-bottom: 0.5rem;
+.concepto-islr-card {
+  padding: 0.85rem 1rem;
+  border-radius: var(--radius-md);
+  background: var(--bg-base);
+  border: 1px solid var(--border-subtle);
+}
+
+.concepto-islr-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  margin-bottom: 0.65rem;
+}
+
+.concepto-islr-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  background: rgba(16, 185, 129, 0.12);
+  color: var(--green-600, #059669);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+}
+
+.concepto-islr-name {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  flex: 1;
+  min-width: 0;
+}
+
+.concepto-islr-calc {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.75rem;
 }
 
 .concepto-islr-remove {
-  margin-top: 0.35rem;
+  margin-top: 0.5rem;
   font-size: 0.75rem;
+}
+
+.concepto-islr-add-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.25rem;
 }
 
 .link-muted {

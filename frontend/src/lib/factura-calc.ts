@@ -1,4 +1,24 @@
-type ConceptoRow = { concepto: string; monto: number };
+export type ConceptoRow = { id: string; concepto: string; monto: number };
+
+export function newConceptoRow(
+  partial?: Partial<Omit<ConceptoRow, 'id'>> & { id?: string }
+): ConceptoRow {
+  return {
+    id: partial?.id ?? globalThis.crypto?.randomUUID?.() ?? `c-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+    concepto: partial?.concepto ?? '',
+    monto: partial?.monto ?? 0
+  };
+}
+
+/** Alinea nombre guardado con la tabla TAB ISLR (mayúsculas / acentos). */
+export function matchConceptoTabla(nombre: string, tablas: Array<{ concepto: string }>): string {
+  const t = nombre.trim();
+  if (!t) return '';
+  const exact = tablas.find((row) => row.concepto === t);
+  if (exact) return exact.concepto;
+  const ins = tablas.find((row) => row.concepto.toLowerCase() === t.toLowerCase());
+  return ins?.concepto ?? t;
+}
 
 export function round2(n: number) {
   return Math.round(n * 100) / 100;

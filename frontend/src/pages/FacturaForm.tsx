@@ -25,14 +25,15 @@ import {
   calcularGrabado,
   grabadoRestanteIslr,
   isTipoSinIslr,
+  matchConceptoTabla,
+  newConceptoRow,
   round2,
-  totalBsFromForm
+  totalBsFromForm,
+  type ConceptoRow
 } from '../lib/factura-calc';
 import { emitAppRefresh } from '../lib/app-refresh';
 import { proveedoresUrl } from '../lib/navigation';
 import { useFormShortcuts } from '../hooks/useFormShortcuts';
-
-type ConceptoRow = { concepto: string; monto: number };
 
 export function FacturaForm() {
   const { id } = useParams();
@@ -64,7 +65,7 @@ export function FacturaForm() {
   const [moneda, setMoneda] = useState('Bs');
   const [total, setTotal] = useState(0);
   const [exento, setExento] = useState(0);
-  const [conceptos, setConceptos] = useState<ConceptoRow[]>([{ concepto: '', monto: 0 }]);
+  const [conceptos, setConceptos] = useState<ConceptoRow[]>(() => [newConceptoRow()]);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [recibidoFisico, setRecibidoFisico] = useState('Pendiente');
   const [retencionEnviada, setRetencionEnviada] = useState('Pendiente');
@@ -102,7 +103,7 @@ export function FacturaForm() {
 
   useEffect(() => {
     if (!id) return;
-    facturasApi.get(id).then((f) => {
+    facturasApi.get(id).then(async (f) => {
       setTipo(f.tipo);
       setNumero(f.numero);
       setRif(f.rif);
@@ -118,11 +119,27 @@ export function FacturaForm() {
       setRecibidoFisico(f.recibidoFisico);
       setRetencionEnviada(f.retencionEnviada);
       setLocked(true);
+      const tab = await maestraApi.tabIslr();
       if (f.detalleIslr) {
         try {
           const parsed = JSON.parse(f.detalleIslr) as { concepto: string; monto: number }[];
-          setConceptos(parsed.map((c) => ({ concepto: c.concepto, monto: c.monto })));
-        } catch { /* ignore */ }
+          if (parsed.length > 0) {
+            setConceptos(
+              parsed.map((c) =>
+                newConceptoRow({
+                  concepto: matchConceptoTabla(c.concepto, tab),
+                  monto: c.monto
+                })
+              )
+            );
+          } else {
+            setConceptos([newConceptoRow()]);
+          }
+        } catch {
+          setConceptos([newConceptoRow()]);
+        }
+      } else {
+        setConceptos([newConceptoRow()]);
       }
     });
   }, [id]);
@@ -142,18 +159,18 @@ export function FacturaForm() {
 
   useEffect(() => {
     if (sinIslr) {
-      setConceptos([{ concepto: '', monto: 0 }]);
+      setConceptos([newConceptoRow()]);
     }
   }, [sinIslr]);
 
   useEffect(() => {
-    if (locked || sinIslr || totalBsForm <= 0) return;
+    if (locked || isEdit || sinIslr || totalBsForm <= 0) return;
     const filled = autollenarSiUnSoloConcepto(conceptos, totalBsForm, exento, tipo);
     const same = filled.every(
       (c, i) => c.concepto === conceptos[i]?.concepto && c.monto === conceptos[i]?.monto
     );
     if (!same) setConceptos(filled);
-  }, [total, exento, moneda, tasa, tipo, locked, sinIslr, totalBsForm]);
+  }, [total, exento, moneda, tasa, tipo, locked, isEdit, sinIslr, totalBsForm]);
 
   const buildPayload = () => ({
     tipo,
@@ -234,10 +251,12 @@ export function FacturaForm() {
         setMoneda(s.ultimaFactura.moneda);
         if (s.ultimaFactura.conceptosIslr.length > 0) {
           setConceptos(
-            s.ultimaFactura.conceptosIslr.map((c) => ({
-              concepto: c.concepto,
-              monto: c.monto
-            }))
+            s.ultimaFactura.conceptosIslr.map((c) =>
+              newConceptoRow({
+                concepto: matchConceptoTabla(c.concepto, tabIslr),
+                monto: c.monto
+              })
+            )
           );
         }
         setMsg('Datos sugeridos desde la última factura del proveedor');
@@ -252,7 +271,7 @@ export function FacturaForm() {
 
   const setConceptoRow = (index: number, conceptoVal: string) => {
     const copy = [...conceptos];
-    copy[index] = { concepto: conceptoVal, monto: 0 };
+    copy[index] = { ...copy[index], concepto: conceptoVal, monto: 0 };
     if (!sinIslr && totalBsForm > 0 && conceptoVal.trim()) {
       setConceptos(aplicarMontoSugeridoRow(copy, index, totalBsForm, exento, tipo));
     } else {
@@ -266,16 +285,17 @@ export function FacturaForm() {
     setConceptos(copy);
   };
 
-  const addConcepto = () =>
-    setConceptos([...conceptos, { concepto: '', monto: 0 }]);
+  const addConcepto = () => setConceptos([...conceptos, newConceptoRow()]);
 
-  const removeConcepto = (index: number) => {
+  const removeConcepto = (rowId: string) => {
     if (conceptos.length <= 1) {
-      setConceptos([{ concepto: '', monto: 0 }]);
+      setConceptos([newConceptoRow()]);
       return;
     }
-    setConceptos(conceptos.filter((_, i) => i !== index));
+    setConceptos(conceptos.filter((c) => c.id !== rowId));
   };
+
+  const lineasConConcepto = conceptos.filter((c) => c.concepto.trim()).length;
 
   const trySubmit = useCallback(() => {
     const form = document.getElementById('factura-form') as HTMLFormElement | null;
@@ -420,51 +440,100 @@ export function FacturaForm() {
         <div className="form-grid-span-3 form-divider">
           <div className="panel-header panel-header-accent-rose" style={{ marginBottom: '0.75rem' }}>
             <h3>Conceptos ISLR</h3>
+            {!sinIslr && lineasConConcepto > 0 && (
+              <span className="panel-meta">{lineasConConcepto} línea(s)</span>
+            )}
             {sinIslr && (
               <p className="text-muted text-sm mt-1">
                 ISLR solo en facturas (FAC). Recibos y notas de entrega no aplican retención.
               </p>
             )}
           </div>
-          {!sinIslr && conceptos.map((c, i) => {
-            const restante = totalBsForm > 0
-              ? grabadoRestanteIslr(conceptos, totalBsForm, exento, i)
-              : 0;
-            const grabado = totalBsForm > 0 ? calcularGrabado(totalBsForm, exento) : 0;
-            const hintMonto =
-              c.concepto && totalBsForm > 0
-                ? restante > 0
-                  ? `Grabado disponible: ${fmtBs(grabado)} · restante línea: ${fmtBs(restante)}`
-                  : 'Sin grabado restante — ajuste montos de otras líneas'
-                : undefined;
-            return (
-              <div key={i} className="concepto-islr-row form-grid-span-3">
-                <div className="grid grid-cols-2 gap-2">
-                  <FormField as="select" label={`Concepto ${i + 1}`} value={c.concepto} onChange={(e) => setConceptoRow(i, e.target.value)} options={[
-                    { value: '', label: '—' },
-                    ...tabIslr.map((t) => ({ value: t.concepto, label: t.concepto }))
-                  ]} />
-                  <MoneyInputField
-                    label="Monto Bs"
-                    value={c.monto}
-                    onChange={(monto) => setConceptoMonto(i, monto)}
-                    hint={hintMonto}
-                  />
-                </div>
-                {conceptos.length > 1 && (
-                  <button
-                    type="button"
-                    className="link-muted concepto-islr-remove"
-                    onClick={() => removeConcepto(i)}
-                  >
-                    Quitar línea
-                  </button>
-                )}
-              </div>
-            );
-          })}
           {!sinIslr && (
-            <button type="button" className="link-green" onClick={addConcepto}>+ Otro concepto</button>
+            <div className="concepto-islr-list form-grid-span-3">
+              {conceptos.map((c, i) => {
+                const restante = totalBsForm > 0
+                  ? grabadoRestanteIslr(conceptos, totalBsForm, exento, i)
+                  : 0;
+                const grabado = totalBsForm > 0 ? calcularGrabado(totalBsForm, exento) : 0;
+                const hintMonto =
+                  c.concepto && totalBsForm > 0
+                    ? restante > 0
+                      ? `Grabado total: ${fmtBs(grabado)} · disponible aquí: ${fmtBs(restante)}`
+                      : 'Sin grabado restante — ajuste montos de otras líneas'
+                    : undefined;
+                const activeRows = conceptos.filter((row) => row.concepto.trim());
+                const activeIndex = activeRows.findIndex((row) => row.id === c.id);
+                const lineaCalc =
+                  activeIndex >= 0 ? preview?.lineasIslr?.[activeIndex] : undefined;
+                const pctLabel =
+                  lineaCalc && lineaCalc.pctEfectivo > 0
+                    ? `${round2(lineaCalc.pctEfectivo * 100)}%`
+                    : null;
+                return (
+                  <div key={c.id} className="concepto-islr-card" data-linea={i + 1}>
+                    <div className="concepto-islr-head">
+                      <span className="concepto-islr-badge">Línea {i + 1}</span>
+                      {c.concepto && (
+                        <span className="concepto-islr-name" title={c.concepto}>
+                          {c.concepto}
+                        </span>
+                      )}
+                      {lineaCalc && c.concepto && (
+                        <span className="concepto-islr-calc">
+                          <span>Base ISLR: {fmtBs(lineaCalc.baseIslr)}</span>
+                          <span>Ret: {fmtBs(lineaCalc.retencionIslr)}</span>
+                          {pctLabel && <span>Tarifa: {pctLabel}</span>}
+                        </span>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <FormField
+                        as="select"
+                        label="Concepto TAB ISLR"
+                        value={c.concepto}
+                        onChange={(e) => setConceptoRow(i, e.target.value)}
+                        options={[
+                          { value: '', label: '— Seleccionar —' },
+                          ...tabIslr.map((t) => ({
+                            value: t.concepto,
+                            label: t.concepto,
+                            key: `${c.id}-${t.id}`
+                          }))
+                        ]}
+                      />
+                      <MoneyInputField
+                        label="Monto Bs (grabado)"
+                        value={c.monto}
+                        onChange={(monto) => setConceptoMonto(i, monto)}
+                        hint={hintMonto}
+                      />
+                    </div>
+                    {conceptos.length > 1 && (
+                      <button
+                        type="button"
+                        className="link-muted concepto-islr-remove"
+                        onClick={() => removeConcepto(c.id)}
+                      >
+                        Quitar línea {i + 1}
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          {!sinIslr && (
+            <div className="concepto-islr-add-row form-grid-span-3">
+              <button type="button" className="link-green" onClick={addConcepto}>
+                + Otro concepto
+              </button>
+              {isEdit && (
+                <span className="text-muted text-sm">
+                  Puede agregar varias líneas ISLR al editar la factura.
+                </span>
+              )}
+            </div>
           )}
         </div>
 

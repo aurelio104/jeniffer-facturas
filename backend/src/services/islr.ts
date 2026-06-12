@@ -7,11 +7,20 @@ export interface ConceptoIslrInput {
   monto: number;
 }
 
+export interface IslrLineaDetalle {
+  concepto: string;
+  montoIngresado: number;
+  baseIslr: number;
+  retencionIslr: number;
+  pctEfectivo: number;
+}
+
 export interface IslrCalcResult {
   baseIslr: number;
   retencionIslr: number;
   detalle: string;
   descripcionAuditoria: string;
+  lineas: IslrLineaDetalle[];
 }
 
 const UT_VALOR = 43;
@@ -151,12 +160,20 @@ export async function calcularIslr(
   let retTotal = 0;
   const partes: string[] = [];
   const auditoria: string[] = [];
+  const lineas: IslrLineaDetalle[] = [];
 
   for (const c of conceptos) {
     if (!c.concepto || c.monto <= 0) continue;
     const row = tablas.find((t) => t.concepto.toLowerCase() === c.concepto.toLowerCase());
     if (!row) {
       partes.push(`${c.concepto}: base ${c.monto.toFixed(2)} ret 0.00 (sin tabla)`);
+      lineas.push({
+        concepto: c.concepto,
+        montoIngresado: c.monto,
+        baseIslr: round2(c.monto),
+        retencionIslr: 0,
+        pctEfectivo: 0
+      });
       continue;
     }
 
@@ -171,13 +188,21 @@ export async function calcularIslr(
     auditoria.push(
       `${descCorta(c.concepto)} (${formatPctAuditoria(linea.pctEfectivo)})`
     );
+    lineas.push({
+      concepto: c.concepto,
+      montoIngresado: c.monto,
+      baseIslr: linea.baseImponibleReal,
+      retencionIslr: linea.impuestoEnBs,
+      pctEfectivo: linea.pctEfectivo
+    });
   }
 
   return {
     baseIslr: round2(baseTotal),
     retencionIslr: round2(retTotal),
     detalle: partes.join(' | '),
-    descripcionAuditoria: auditoria.join(' / ')
+    descripcionAuditoria: auditoria.join(' / '),
+    lineas
   };
 }
 
