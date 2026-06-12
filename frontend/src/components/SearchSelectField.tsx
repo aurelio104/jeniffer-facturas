@@ -31,6 +31,7 @@ export function SearchSelectField({
 }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const skipBlurCommitRef = useRef(false);
   const [open, setOpen] = useState(false);
   const [inputValue, setInputValue] = useState('');
   const [activeIndex, setActiveIndex] = useState(0);
@@ -51,7 +52,7 @@ export function SearchSelectField({
   }, [options, value]);
 
   useEffect(() => {
-    if (!open) {
+    if (!open && !skipBlurCommitRef.current) {
       setInputValue(closedDisplay);
     }
   }, [closedDisplay, open]);
@@ -71,15 +72,27 @@ export function SearchSelectField({
   }, []);
 
   const pick = (next: string, labelText?: string) => {
+    skipBlurCommitRef.current = true;
     onChange(next);
     setInputValue(next ? labelText ?? optionLabel(options, next) : '');
     setOpen(false);
     inputRef.current?.blur();
+    window.setTimeout(() => {
+      skipBlurCommitRef.current = false;
+    }, 200);
   };
 
   const commitInput = () => {
+    if (skipBlurCommitRef.current) return;
+
     const trimmed = inputValue.trim();
     if (!trimmed) {
+      // Tras elegir en la lista, el blur puede llegar antes de que el padre actualice value.
+      if (value) {
+        setInputValue(closedDisplay);
+        setOpen(false);
+        return;
+      }
       if (emptyOption || !required) pick('');
       else setInputValue(closedDisplay);
       setOpen(false);

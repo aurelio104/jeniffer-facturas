@@ -274,9 +274,12 @@ export function FacturaForm() {
   }, [deepRif, isEdit, locked, proveedores.length, rif]);
 
   const setConceptoRow = (index: number, conceptoVal: string) => {
+    const normalized = conceptoVal.trim()
+      ? matchConceptoTabla(conceptoVal, tabIslr)
+      : '';
     const copy = [...conceptos];
-    copy[index] = { ...copy[index], concepto: conceptoVal, monto: 0 };
-    if (!sinIslr && totalBsForm > 0 && conceptoVal.trim()) {
+    copy[index] = { ...copy[index], concepto: normalized, monto: 0 };
+    if (!sinIslr && totalBsForm > 0 && normalized) {
       setConceptos(aplicarMontoSugeridoRow(copy, index, totalBsForm, exento, tipo));
     } else {
       setConceptos(copy);
