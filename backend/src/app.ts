@@ -26,7 +26,7 @@ export async function bootstrapApp() {
 }
 
 app.use(cors(buildCorsOptions()));
-app.use(express.json());
+app.use(express.json({ limit: '8mb' }));
 
 app.use(async (_req, _res, next) => {
   try {

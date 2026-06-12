@@ -1,13 +1,14 @@
 import fs from 'fs';
 import path from 'path';
+import { getBackupDir, getDbFilePath } from '../lib/db-path.js';
 
 const MAX_BACKUPS = 7;
 
 export function runBackupDb(): string | null {
-  const dbPath = path.join(process.cwd(), 'prisma', 'dev.db');
+  const dbPath = getDbFilePath();
   if (!fs.existsSync(dbPath)) return null;
 
-  const backupDir = path.join(process.cwd(), 'prisma', 'backups');
+  const backupDir = getBackupDir();
   fs.mkdirSync(backupDir, { recursive: true });
 
   const stamp = new Date().toISOString().slice(0, 10);

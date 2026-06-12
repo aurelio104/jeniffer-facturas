@@ -1,9 +1,10 @@
 import fs from 'fs';
-import path from 'path';
 import { Router } from 'express';
 import { z } from 'zod';
 import { requireAdmin, type AuthedRequest } from '../lib/auth-middleware.js';
+import { getDbFilePath } from '../lib/db-path.js';
 import { prisma } from '../lib/prisma.js';
+import { restoreDatabaseFromBuffer } from '../services/db-restore.js';
 import {
   hashPassword,
   listUsers,
@@ -19,12 +20,24 @@ const router = Router();
 router.use(requireAdmin);
 
 router.get('/backup', (_req, res) => {
-  const dbPath = path.join(process.cwd(), 'prisma', 'dev.db');
+  const dbPath = getDbFilePath();
   if (!fs.existsSync(dbPath)) return res.status(404).json({ error: 'Base de datos no encontrada' });
   const stamp = new Date().toISOString().replace(/[:.]/g, '-');
   res.setHeader('Content-Type', 'application/octet-stream');
   res.setHeader('Content-Disposition', `attachment; filename="jeniffer-backup-${stamp}.db"`);
   fs.createReadStream(dbPath).pipe(res);
+});
+
+const restoreSchema = z.object({
+  database: z.string().min(100)
+});
+
+router.post('/restore', async (req: AuthedRequest, res) => {
+  const { database } = restoreSchema.parse(req.body);
+  const buf = Buffer.from(database, 'base64');
+  const result = await restoreDatabaseFromBuffer(buf, getRequestUser(req));
+  res.json(result);
+  setTimeout(() => process.exit(0), 800);
 });
 
 const configSchema = z.object({
