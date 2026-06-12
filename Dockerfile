@@ -2,7 +2,8 @@
 FROM node:22-alpine AS builder
 WORKDIR /app
 COPY package.json package-lock.json ./
-COPY backend/package.json ./backend/
+COPY backend/package.json backend/prisma.config.ts ./backend/
+COPY backend/prisma ./backend/prisma
 COPY frontend/package.json ./frontend/
 RUN npm ci
 COPY . .
@@ -23,6 +24,7 @@ COPY frontend/package.json ./frontend/
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/backend/dist ./backend/dist
 COPY --from=builder /app/backend/prisma ./backend/prisma
+COPY --from=builder /app/backend/prisma.config.ts ./backend/
 COPY --from=builder /app/backend/src/generated ./backend/src/generated
 COPY --from=builder /app/frontend/dist ./frontend/dist
 COPY scripts/koyeb-start.sh ./scripts/koyeb-start.sh
