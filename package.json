@@ -18,7 +18,9 @@
     "db:push": "cd backend && npx prisma db push",
     "db:seed": "cd backend && npm run db:seed",
     "db:import": "bash scripts/importar.sh",
-    "db:bcv-rebuild": "cd backend && npx tsx scripts/rebuild-bcv-historico.ts"
+    "db:bcv-rebuild": "cd backend && npx tsx scripts/rebuild-bcv-historico.ts",
+    "docker:build": "docker build -t jeniffer .",
+    "docker:run": "docker run --rm -p 8000:8000 -v jeniffer-koyeb-data:/data jeniffer"
   },
   "engines": { "node": ">=22.0.0" },
   "devDependencies": {

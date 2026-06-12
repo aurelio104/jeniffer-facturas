@@ -53,4 +53,16 @@ app.use('/api/admin', admin);
 app.use('/api/alertas', alertas);
 app.use('/api/export', exportRoutes);
 
+app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  console.error('[api]', err);
+  const message = err instanceof Error ? err.message : 'Error interno';
+  res.status(500).json({
+    error: message,
+    hint:
+      process.env.DATA_DIR && !process.env.DATABASE_URL?.includes('libsql')
+        ? undefined
+        : 'Revise DATABASE_URL y volumen en Koyeb'
+  });
+});
+
 export default app;

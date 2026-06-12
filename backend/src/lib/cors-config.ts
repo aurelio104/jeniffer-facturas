@@ -13,6 +13,9 @@ export function buildCorsOptions(): cors.CorsOptions {
   if (process.env.VERCEL_URL) {
     allowed.add(`https://${process.env.VERCEL_URL}`);
   }
+  if (process.env.KOYEB_PUBLIC_DOMAIN) {
+    allowed.add(`https://${process.env.KOYEB_PUBLIC_DOMAIN}`);
+  }
 
   for (const raw of process.env.CORS_ORIGINS?.split(',') ?? []) {
     const o = raw.trim();

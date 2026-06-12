@@ -5,14 +5,20 @@ import type { AuthedRequest } from '../lib/auth-middleware.js';
 const router = Router();
 
 router.post('/login', async (req, res) => {
-  const { username, password } = req.body as { username?: string; password?: string };
-  if (!username || !password) {
-    return res.status(400).json({ error: 'Usuario y contraseña requeridos' });
+  try {
+    const { username, password } = req.body as { username?: string; password?: string };
+    if (!username || !password) {
+      return res.status(400).json({ error: 'Usuario y contraseña requeridos' });
+    }
+    await seedUsers();
+    const result = await login(username, password);
+    if (!result) return res.status(401).json({ error: 'Credenciales inválidas' });
+    res.json({ ok: true, user: result.user, token: result.token });
+  } catch (err) {
+    console.error('[auth/login]', err);
+    const msg = err instanceof Error ? err.message : 'Error al iniciar sesión';
+    res.status(500).json({ error: msg });
   }
-  await seedUsers();
-  const result = await login(username, password);
-  if (!result) return res.status(401).json({ error: 'Credenciales inválidas' });
-  res.json({ ok: true, user: result.user, token: result.token });
 });
 
 router.post('/logout', async (req, res) => {

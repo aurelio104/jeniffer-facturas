@@ -1,0 +1,13 @@
+node_modules
+**/node_modules
+.git
+.cursor
+*.md
+!DESPLIEGUE_KOYEB.md
+backend/prisma/dev.db
+backend/prisma/*.db
+.env
+.env.*
+frontend/dist
+backend/dist
+terminals
