@@ -6,19 +6,47 @@ async function main() {
     await prisma.tabIslr.createMany({
       data: [
         {
-          concepto: 'Honorarios profesionales',
-          basePnr: 100, pnr: 3, pagosMinBs: 1000, sustraendoBs: 0,
-          basePjd: 100, pjd: 2, basePjnd: 100, pjnd: 1, basePnnr: 100, pnnr: 0, orden: 1
+          concepto: 'HONORARIOS PROFESIONALES',
+          basePnr: 1,
+          pnr: 0.03,
+          pagosMinBs: 3583.34,
+          sustraendoBs: 107.5,
+          basePjd: 1,
+          pjd: 0.05,
+          basePjnd: 0.9,
+          pjnd: 0.05,
+          basePnnr: 0.9,
+          pnnr: 0.34,
+          orden: 1
         },
         {
-          concepto: 'Servicios',
-          basePnr: 100, pnr: 2, pagosMinBs: 1000, sustraendoBs: 0,
-          basePjd: 100, pjd: 1, basePjnd: 100, pjnd: 0.5, basePnnr: 100, pnnr: 0, orden: 2
+          concepto: 'SERVICIOS',
+          basePnr: 1,
+          pnr: 0.01,
+          pagosMinBs: 3583.34,
+          sustraendoBs: 35.83,
+          basePjd: 1,
+          pjd: 0.02,
+          basePjnd: 1,
+          pjnd: null,
+          t2Pjnd: true,
+          basePnnr: 1,
+          pnnr: 0.34,
+          orden: 2
         },
         {
-          concepto: 'Arrendamiento',
-          basePnr: 100, pnr: 1, pagosMinBs: 1000, sustraendoBs: 0,
-          basePjd: 100, pjd: 0.5, basePjnd: 100, pjnd: 0, basePnnr: 100, pnnr: 0, orden: 3
+          concepto: 'COMISIONES MERCANTILES Y OTRAS',
+          basePnr: 1,
+          pnr: 0.03,
+          pagosMinBs: 3583.34,
+          sustraendoBs: 107.5,
+          basePjd: 1,
+          pjd: 0.05,
+          basePjnd: 1,
+          pjnd: 0.05,
+          basePnnr: 1,
+          pnnr: 0.34,
+          orden: 3
         }
       ]
     });
@@ -38,7 +66,7 @@ async function main() {
     create: {
       rif,
       nombre: 'Proveedor Demo',
-      tipoIslr: 'PNR',
+      tipoIslr: 'PJD',
       retencionIva: '100%',
       banco: 'Banesco',
       email: 'demo@proveedor.com'

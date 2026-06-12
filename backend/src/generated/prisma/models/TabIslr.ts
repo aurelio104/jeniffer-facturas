@@ -67,6 +67,10 @@ export type TabIslrMinAggregateOutputType = {
   pjnd: number | null
   basePnnr: number | null
   pnnr: number | null
+  t2Pnr: boolean | null
+  t2Pjd: boolean | null
+  t2Pjnd: boolean | null
+  t2Pnnr: boolean | null
   orden: number | null
 }
 
@@ -83,6 +87,10 @@ export type TabIslrMaxAggregateOutputType = {
   pjnd: number | null
   basePnnr: number | null
   pnnr: number | null
+  t2Pnr: boolean | null
+  t2Pjd: boolean | null
+  t2Pjnd: boolean | null
+  t2Pnnr: boolean | null
   orden: number | null
 }
 
@@ -99,6 +107,10 @@ export type TabIslrCountAggregateOutputType = {
   pjnd: number
   basePnnr: number
   pnnr: number
+  t2Pnr: number
+  t2Pjd: number
+  t2Pjnd: number
+  t2Pnnr: number
   orden: number
   _all: number
 }
@@ -145,6 +157,10 @@ export type TabIslrMinAggregateInputType = {
   pjnd?: true
   basePnnr?: true
   pnnr?: true
+  t2Pnr?: true
+  t2Pjd?: true
+  t2Pjnd?: true
+  t2Pnnr?: true
   orden?: true
 }
 
@@ -161,6 +177,10 @@ export type TabIslrMaxAggregateInputType = {
   pjnd?: true
   basePnnr?: true
   pnnr?: true
+  t2Pnr?: true
+  t2Pjd?: true
+  t2Pjnd?: true
+  t2Pnnr?: true
   orden?: true
 }
 
@@ -177,6 +197,10 @@ export type TabIslrCountAggregateInputType = {
   pjnd?: true
   basePnnr?: true
   pnnr?: true
+  t2Pnr?: true
+  t2Pjd?: true
+  t2Pjnd?: true
+  t2Pnnr?: true
   orden?: true
   _all?: true
 }
@@ -280,6 +304,10 @@ export type TabIslrGroupByOutputType = {
   pjnd: number | null
   basePnnr: number | null
   pnnr: number | null
+  t2Pnr: boolean
+  t2Pjd: boolean
+  t2Pjnd: boolean
+  t2Pnnr: boolean
   orden: number
   _count: TabIslrCountAggregateOutputType | null
   _avg: TabIslrAvgAggregateOutputType | null
@@ -319,6 +347,10 @@ export type TabIslrWhereInput = {
   pjnd?: Prisma.FloatNullableFilter<"TabIslr"> | number | null
   basePnnr?: Prisma.FloatNullableFilter<"TabIslr"> | number | null
   pnnr?: Prisma.FloatNullableFilter<"TabIslr"> | number | null
+  t2Pnr?: Prisma.BoolFilter<"TabIslr"> | boolean
+  t2Pjd?: Prisma.BoolFilter<"TabIslr"> | boolean
+  t2Pjnd?: Prisma.BoolFilter<"TabIslr"> | boolean
+  t2Pnnr?: Prisma.BoolFilter<"TabIslr"> | boolean
   orden?: Prisma.IntFilter<"TabIslr"> | number
 }
 
@@ -335,6 +367,10 @@ export type TabIslrOrderByWithRelationInput = {
   pjnd?: Prisma.SortOrderInput | Prisma.SortOrder
   basePnnr?: Prisma.SortOrderInput | Prisma.SortOrder
   pnnr?: Prisma.SortOrderInput | Prisma.SortOrder
+  t2Pnr?: Prisma.SortOrder
+  t2Pjd?: Prisma.SortOrder
+  t2Pjnd?: Prisma.SortOrder
+  t2Pnnr?: Prisma.SortOrder
   orden?: Prisma.SortOrder
 }
 
@@ -354,6 +390,10 @@ export type TabIslrWhereUniqueInput = Prisma.AtLeast<{
   pjnd?: Prisma.FloatNullableFilter<"TabIslr"> | number | null
   basePnnr?: Prisma.FloatNullableFilter<"TabIslr"> | number | null
   pnnr?: Prisma.FloatNullableFilter<"TabIslr"> | number | null
+  t2Pnr?: Prisma.BoolFilter<"TabIslr"> | boolean
+  t2Pjd?: Prisma.BoolFilter<"TabIslr"> | boolean
+  t2Pjnd?: Prisma.BoolFilter<"TabIslr"> | boolean
+  t2Pnnr?: Prisma.BoolFilter<"TabIslr"> | boolean
   orden?: Prisma.IntFilter<"TabIslr"> | number
 }, "id">
 
@@ -370,6 +410,10 @@ export type TabIslrOrderByWithAggregationInput = {
   pjnd?: Prisma.SortOrderInput | Prisma.SortOrder
   basePnnr?: Prisma.SortOrderInput | Prisma.SortOrder
   pnnr?: Prisma.SortOrderInput | Prisma.SortOrder
+  t2Pnr?: Prisma.SortOrder
+  t2Pjd?: Prisma.SortOrder
+  t2Pjnd?: Prisma.SortOrder
+  t2Pnnr?: Prisma.SortOrder
   orden?: Prisma.SortOrder
   _count?: Prisma.TabIslrCountOrderByAggregateInput
   _avg?: Prisma.TabIslrAvgOrderByAggregateInput
@@ -394,6 +438,10 @@ export type TabIslrScalarWhereWithAggregatesInput = {
   pjnd?: Prisma.FloatNullableWithAggregatesFilter<"TabIslr"> | number | null
   basePnnr?: Prisma.FloatNullableWithAggregatesFilter<"TabIslr"> | number | null
   pnnr?: Prisma.FloatNullableWithAggregatesFilter<"TabIslr"> | number | null
+  t2Pnr?: Prisma.BoolWithAggregatesFilter<"TabIslr"> | boolean
+  t2Pjd?: Prisma.BoolWithAggregatesFilter<"TabIslr"> | boolean
+  t2Pjnd?: Prisma.BoolWithAggregatesFilter<"TabIslr"> | boolean
+  t2Pnnr?: Prisma.BoolWithAggregatesFilter<"TabIslr"> | boolean
   orden?: Prisma.IntWithAggregatesFilter<"TabIslr"> | number
 }
 
@@ -410,6 +458,10 @@ export type TabIslrCreateInput = {
   pjnd?: number | null
   basePnnr?: number | null
   pnnr?: number | null
+  t2Pnr?: boolean
+  t2Pjd?: boolean
+  t2Pjnd?: boolean
+  t2Pnnr?: boolean
   orden?: number
 }
 
@@ -426,6 +478,10 @@ export type TabIslrUncheckedCreateInput = {
   pjnd?: number | null
   basePnnr?: number | null
   pnnr?: number | null
+  t2Pnr?: boolean
+  t2Pjd?: boolean
+  t2Pjnd?: boolean
+  t2Pnnr?: boolean
   orden?: number
 }
 
@@ -442,6 +498,10 @@ export type TabIslrUpdateInput = {
   pjnd?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   basePnnr?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   pnnr?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  t2Pnr?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  t2Pjd?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  t2Pjnd?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  t2Pnnr?: Prisma.BoolFieldUpdateOperationsInput | boolean
   orden?: Prisma.IntFieldUpdateOperationsInput | number
 }
 
@@ -458,6 +518,10 @@ export type TabIslrUncheckedUpdateInput = {
   pjnd?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   basePnnr?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   pnnr?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  t2Pnr?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  t2Pjd?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  t2Pjnd?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  t2Pnnr?: Prisma.BoolFieldUpdateOperationsInput | boolean
   orden?: Prisma.IntFieldUpdateOperationsInput | number
 }
 
@@ -474,6 +538,10 @@ export type TabIslrCreateManyInput = {
   pjnd?: number | null
   basePnnr?: number | null
   pnnr?: number | null
+  t2Pnr?: boolean
+  t2Pjd?: boolean
+  t2Pjnd?: boolean
+  t2Pnnr?: boolean
   orden?: number
 }
 
@@ -490,6 +558,10 @@ export type TabIslrUpdateManyMutationInput = {
   pjnd?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   basePnnr?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   pnnr?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  t2Pnr?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  t2Pjd?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  t2Pjnd?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  t2Pnnr?: Prisma.BoolFieldUpdateOperationsInput | boolean
   orden?: Prisma.IntFieldUpdateOperationsInput | number
 }
 
@@ -506,6 +578,10 @@ export type TabIslrUncheckedUpdateManyInput = {
   pjnd?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   basePnnr?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   pnnr?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  t2Pnr?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  t2Pjd?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  t2Pjnd?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  t2Pnnr?: Prisma.BoolFieldUpdateOperationsInput | boolean
   orden?: Prisma.IntFieldUpdateOperationsInput | number
 }
 
@@ -522,6 +598,10 @@ export type TabIslrCountOrderByAggregateInput = {
   pjnd?: Prisma.SortOrder
   basePnnr?: Prisma.SortOrder
   pnnr?: Prisma.SortOrder
+  t2Pnr?: Prisma.SortOrder
+  t2Pjd?: Prisma.SortOrder
+  t2Pjnd?: Prisma.SortOrder
+  t2Pnnr?: Prisma.SortOrder
   orden?: Prisma.SortOrder
 }
 
@@ -552,6 +632,10 @@ export type TabIslrMaxOrderByAggregateInput = {
   pjnd?: Prisma.SortOrder
   basePnnr?: Prisma.SortOrder
   pnnr?: Prisma.SortOrder
+  t2Pnr?: Prisma.SortOrder
+  t2Pjd?: Prisma.SortOrder
+  t2Pjnd?: Prisma.SortOrder
+  t2Pnnr?: Prisma.SortOrder
   orden?: Prisma.SortOrder
 }
 
@@ -568,6 +652,10 @@ export type TabIslrMinOrderByAggregateInput = {
   pjnd?: Prisma.SortOrder
   basePnnr?: Prisma.SortOrder
   pnnr?: Prisma.SortOrder
+  t2Pnr?: Prisma.SortOrder
+  t2Pjd?: Prisma.SortOrder
+  t2Pjnd?: Prisma.SortOrder
+  t2Pnnr?: Prisma.SortOrder
   orden?: Prisma.SortOrder
 }
 
@@ -600,6 +688,10 @@ export type TabIslrSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs 
   pjnd?: boolean
   basePnnr?: boolean
   pnnr?: boolean
+  t2Pnr?: boolean
+  t2Pjd?: boolean
+  t2Pjnd?: boolean
+  t2Pnnr?: boolean
   orden?: boolean
 }, ExtArgs["result"]["tabIslr"]>
 
@@ -616,6 +708,10 @@ export type TabIslrSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Exten
   pjnd?: boolean
   basePnnr?: boolean
   pnnr?: boolean
+  t2Pnr?: boolean
+  t2Pjd?: boolean
+  t2Pjnd?: boolean
+  t2Pnnr?: boolean
   orden?: boolean
 }, ExtArgs["result"]["tabIslr"]>
 
@@ -632,6 +728,10 @@ export type TabIslrSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Exten
   pjnd?: boolean
   basePnnr?: boolean
   pnnr?: boolean
+  t2Pnr?: boolean
+  t2Pjd?: boolean
+  t2Pjnd?: boolean
+  t2Pnnr?: boolean
   orden?: boolean
 }, ExtArgs["result"]["tabIslr"]>
 
@@ -648,10 +748,14 @@ export type TabIslrSelectScalar = {
   pjnd?: boolean
   basePnnr?: boolean
   pnnr?: boolean
+  t2Pnr?: boolean
+  t2Pjd?: boolean
+  t2Pjnd?: boolean
+  t2Pnnr?: boolean
   orden?: boolean
 }
 
-export type TabIslrOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "concepto" | "basePnr" | "pnr" | "pagosMinBs" | "sustraendoBs" | "basePjd" | "pjd" | "basePjnd" | "pjnd" | "basePnnr" | "pnnr" | "orden", ExtArgs["result"]["tabIslr"]>
+export type TabIslrOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "concepto" | "basePnr" | "pnr" | "pagosMinBs" | "sustraendoBs" | "basePjd" | "pjd" | "basePjnd" | "pjnd" | "basePnnr" | "pnnr" | "t2Pnr" | "t2Pjd" | "t2Pjnd" | "t2Pnnr" | "orden", ExtArgs["result"]["tabIslr"]>
 
 export type $TabIslrPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "TabIslr"
@@ -669,6 +773,10 @@ export type $TabIslrPayload<ExtArgs extends runtime.Types.Extensions.InternalArg
     pjnd: number | null
     basePnnr: number | null
     pnnr: number | null
+    t2Pnr: boolean
+    t2Pjd: boolean
+    t2Pjnd: boolean
+    t2Pnnr: boolean
     orden: number
   }, ExtArgs["result"]["tabIslr"]>
   composites: {}
@@ -1105,6 +1213,10 @@ export interface TabIslrFieldRefs {
   readonly pjnd: Prisma.FieldRef<"TabIslr", 'Float'>
   readonly basePnnr: Prisma.FieldRef<"TabIslr", 'Float'>
   readonly pnnr: Prisma.FieldRef<"TabIslr", 'Float'>
+  readonly t2Pnr: Prisma.FieldRef<"TabIslr", 'Boolean'>
+  readonly t2Pjd: Prisma.FieldRef<"TabIslr", 'Boolean'>
+  readonly t2Pjnd: Prisma.FieldRef<"TabIslr", 'Boolean'>
+  readonly t2Pnnr: Prisma.FieldRef<"TabIslr", 'Boolean'>
   readonly orden: Prisma.FieldRef<"TabIslr", 'Int'>
 }
     

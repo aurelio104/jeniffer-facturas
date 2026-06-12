@@ -2,9 +2,13 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   calcularBaseImponible,
+  calcularGrabado,
+  isTipoConIslr,
   isTipoSinIslr,
+  montoProcesarIslr,
   normalizarConceptosIslr,
-  previewIvaDesdeTotales
+  previewIvaDesdeTotales,
+  validarSumaConceptosIslr
 } from './factura-calc.js';
 
 test('calcularBaseImponible con IVA 16% incluido', () => {
@@ -20,8 +24,10 @@ test('retención IVA 75% y monto a pagar sin ISLR', () => {
   assert.equal(iva.montoAPagar, 12119.86);
 });
 
-test('REC no aplica ISLR', () => {
+test('REC y NE no aplican ISLR', () => {
   assert.equal(isTipoSinIslr('REC'), true);
+  assert.equal(isTipoSinIslr('NE'), true);
+  assert.equal(isTipoConIslr('FAC'), true);
   const out = normalizarConceptosIslr(
     [{ concepto: 'SERVICIOS', monto: 0 }],
     10000,
@@ -31,9 +37,22 @@ test('REC no aplica ISLR', () => {
   assert.deepEqual(out, []);
 });
 
-test('un solo concepto recibe la base imponible', () => {
+test('montoProcesarIslr desglosa cuando monto = total', () => {
+  assert.equal(montoProcesarIslr(13518.31, 13518.31, 0), 11653.72);
+  assert.equal(montoProcesarIslr(5000, 13518.31, 0), 5000);
+});
+
+test('montoProcesarIslr suma exento al desglosar', () => {
+  assert.equal(montoProcesarIslr(15000, 15000, 1000), round2(14000 / 1.16 + 1000));
+});
+
+function round2(n: number) {
+  return Math.round(n * 100) / 100;
+}
+
+test('un solo concepto autollenado usa total; normalizado desglosa', () => {
   const out = normalizarConceptosIslr(
-    [{ concepto: 'SERVICIOS', monto: 0 }],
+    [{ concepto: 'SERVICIOS', monto: 13518.31 }],
     13518.31,
     0,
     'FAC'
@@ -42,21 +61,22 @@ test('un solo concepto recibe la base imponible', () => {
   assert.equal(out[0].monto, 11653.72);
 });
 
-test('varias líneas: primera toma base, segunda queda en 0 si no hay restante', () => {
-  const out = normalizarConceptosIslr(
-    [
-      { concepto: 'SERVICIOS', monto: 0 },
-      { concepto: 'HONORARIOS', monto: 0 }
-    ],
+test('validación suma conceptos vs grabado', () => {
+  const ok = validarSumaConceptosIslr(
+    [{ concepto: 'SERVICIOS', monto: 10000 }],
     13518.31,
-    0,
-    'FAC'
+    0
   );
-  assert.equal(out[0].monto, 11653.72);
-  assert.equal(out[1].monto, 0);
+  assert.equal(ok.ok, true);
+  const bad = validarSumaConceptosIslr(
+    [{ concepto: 'SERVICIOS', monto: 14000 }],
+    13518.31,
+    0
+  );
+  assert.equal(bad.ok, false);
 });
 
-test('varias líneas con montos parciales asignan restante en orden', () => {
+test('varias líneas con montos parciales asignan restante en grabado', () => {
   const out = normalizarConceptosIslr(
     [
       { concepto: 'SERVICIOS', monto: 5000 },
@@ -67,5 +87,5 @@ test('varias líneas con montos parciales asignan restante en orden', () => {
     'FAC'
   );
   assert.equal(out[0].monto, 5000);
-  assert.equal(out[1].monto, 6653.72);
+  assert.equal(out[1].monto, round2(calcularGrabado(13518.31, 0) - 5000));
 });

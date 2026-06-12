@@ -172,6 +172,10 @@ const tabIslrSchema = z.object({
   pjnd: z.number().optional().nullable(),
   basePnnr: z.number().optional().nullable(),
   pnnr: z.number().optional().nullable(),
+  t2Pnr: z.boolean().optional(),
+  t2Pjd: z.boolean().optional(),
+  t2Pjnd: z.boolean().optional(),
+  t2Pnnr: z.boolean().optional(),
   orden: z.number().int().optional()
 });
 

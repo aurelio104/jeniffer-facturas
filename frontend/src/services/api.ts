@@ -173,6 +173,10 @@ export type TabIslr = {
   pjnd?: number;
   basePnnr?: number;
   pnnr?: number;
+  t2Pnr?: boolean;
+  t2Pjd?: boolean;
+  t2Pjnd?: boolean;
+  t2Pnnr?: boolean;
   orden?: number;
 };
 

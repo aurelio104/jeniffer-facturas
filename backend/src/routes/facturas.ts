@@ -5,7 +5,10 @@ import { requireAdmin } from '../lib/auth-middleware.js';
 import { logAuditoria } from '../services/auditoria.js';
 import { getRequestUser } from '../lib/request-user.js';
 import { calcularIvaYNeto, calcularIslr, type ConceptoIslrInput } from '../services/islr.js';
-import { normalizarConceptosIslr } from '../services/factura-calc.js';
+import {
+  normalizarConceptosIslr,
+  validarSumaConceptosIslr
+} from '../services/factura-calc.js';
 import { obtenerTasaDelDia } from '../services/tasas.js';
 import { suggestFacturaPorRif, checkFacturaDuplicada } from '../services/factura-suggest.js';
 import { refreshAlertasDebounced } from '../services/scheduler.js';
@@ -56,6 +59,14 @@ async function buildFacturaData(input: z.infer<typeof schema>, existingId?: stri
   }
 
   const conceptosRaw: ConceptoIslrInput[] = input.conceptosIslr ?? [];
+  const validacion = validarSumaConceptosIslr(
+    conceptosRaw,
+    totalBs,
+    input.exentoBs ?? 0
+  );
+  if (!validacion.ok) {
+    throw new Error(validacion.error ?? 'Conceptos ISLR inválidos');
+  }
   const conceptos = normalizarConceptosIslr(
     conceptosRaw,
     totalBs,
@@ -88,7 +99,9 @@ async function buildFacturaData(input: z.infer<typeof schema>, existingId?: stri
     totalBs: round2(totalBs),
     totalUsd: totalUsd != null ? round2(totalUsd) : null,
     exentoBs: input.exentoBs ?? 0,
-    descripcionIslr: input.descripcionIslr ?? islr.detalle,
+    descripcionIslr:
+      input.descripcionIslr ??
+      (islr.descripcionAuditoria || (conceptos.length === 0 ? 'SIN ISLR' : islr.detalle)),
     detalleIslr: JSON.stringify(conceptos),
     baseIslr: islr.baseIslr,
     retencionIslr: islr.retencionIslr,
@@ -149,13 +162,18 @@ router.get('/buscar/:q', async (req, res) => {
 router.post('/preview', async (req, res) => {
   const input = schema.parse(req.body);
   const prov = await prisma.proveedor.findUnique({ where: { rif: input.rif } });
-  const data = await buildFacturaData(input);
-  res.json({
+  try {
+    const data = await buildFacturaData(input);
+    res.json({
     ...data,
     tipoIslrAplicado: prov?.tipoIslr ?? 'PNR',
     retencionIvaAplicada: prov?.retencionIva ?? '100%',
     conceptosIslrNormalizados: JSON.parse(data.detalleIslr ?? '[]')
-  });
+    });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : 'Error en cálculo';
+    res.status(400).json({ error: msg });
+  }
 });
 
 router.get('/:id', async (req, res) => {
@@ -171,7 +189,13 @@ router.post('/', async (req, res) => {
   });
   if (dup) return res.status(409).json({ error: 'Factura duplicada' });
 
-  const data = await buildFacturaData(input);
+  let data;
+  try {
+    data = await buildFacturaData(input);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : 'Error en cálculo';
+    return res.status(400).json({ error: msg });
+  }
   const f = await prisma.factura.create({ data });
   await logAuditoria('FACTURA_CREADA', `${f.tipo}-${f.numero}`, getRequestUser(req));
   refreshAlertasDebounced();
@@ -180,7 +204,13 @@ router.post('/', async (req, res) => {
 
 router.put('/:id', async (req, res) => {
   const input = schema.parse(req.body);
-  const data = await buildFacturaData(input, req.params.id);
+  let data;
+  try {
+    data = await buildFacturaData(input, req.params.id);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : 'Error en cálculo';
+    return res.status(400).json({ error: msg });
+  }
   const f = await prisma.factura.update({ where: { id: req.params.id }, data });
   await logAuditoria('FACTURA_ACTUALIZADA', `${f.tipo}-${f.numero}`, getRequestUser(req));
   refreshAlertasDebounced();

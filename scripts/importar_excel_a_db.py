@@ -32,6 +32,10 @@ def s(v) -> str | None:
     return t
 
 
+def is_t2(v) -> bool:
+    return str(v).strip().upper() == "T2"
+
+
 def num(v) -> float | None:
     if v is None:
         return None
@@ -132,25 +136,34 @@ def import_tab_islr(conn: sqlite3.Connection, wb) -> int:
         concepto = s(d.get("CONCEPTO DEL PAGO"))
         if not concepto:
             continue
+        pnr_raw = d.get("PNR")
+        pjd_raw = d.get("PJD")
+        pjnd_raw = d.get("PJND")
+        pnnr_raw = d.get("PNNR")
         conn.execute(
             """
             INSERT INTO TabIslr (id, concepto, basePnr, pnr, pagosMinBs, sustraendoBs,
-                basePjd, pjd, basePjnd, pjnd, basePnnr, pnnr, orden)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
+                basePjd, pjd, basePjnd, pjnd, basePnnr, pnnr,
+                t2Pnr, t2Pjd, t2Pjnd, t2Pnnr, orden)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
             """,
             (
                 cid(),
                 concepto,
                 num(d.get("BASE PNR")),
-                num(d.get("PNR")),
+                num(pnr_raw) if not is_t2(pnr_raw) else None,
                 num(d.get("PAGOS > A BS.")),
                 num(d.get("SUSTR EN BS.")),
                 num(d.get("BASE PJD")),
-                num(d.get("PJD")),
+                num(pjd_raw) if not is_t2(pjd_raw) else None,
                 num(d.get("BASE PJND")),
-                num(d.get("PJND")),
+                num(pjnd_raw) if not is_t2(pjnd_raw) else None,
                 num(d.get("BASE PNNR")),
-                num(d.get("PNNR")),
+                num(pnnr_raw) if not is_t2(pnnr_raw) else None,
+                1 if is_t2(pnr_raw) else 0,
+                1 if is_t2(pjd_raw) else 0,
+                1 if is_t2(pjnd_raw) else 0,
+                1 if is_t2(pnnr_raw) else 0,
                 orden,
             ),
         )

@@ -168,5 +168,9 @@ model TabIslr {
   pjnd          Float?
   basePnnr      Float?
   pnnr          Float?
+  t2Pnr         Boolean @default(false)
+  t2Pjd         Boolean @default(false)
+  t2Pjnd        Boolean @default(false)
+  t2Pnnr        Boolean @default(false)
   orden         Int     @default(0)
 }

@@ -21,9 +21,11 @@ import { AdminOnly } from '../components/AdminOnly';
 import {
   aplicarMontoSugeridoRow,
   autollenarSiUnSoloConcepto,
-  baseRestanteIslr,
   calcularBaseImponible,
+  calcularGrabado,
+  grabadoRestanteIslr,
   isTipoSinIslr,
+  round2,
   totalBsFromForm
 } from '../lib/factura-calc';
 
@@ -272,8 +274,26 @@ export function FacturaForm() {
       setMsg(dupWarning);
       return;
     }
-    if (!sinIslr && tipo === 'FAC' && conceptos.some((c) => c.concepto && c.monto <= 0)) {
+    const conConcepto = conceptos.filter((c) => c.concepto.trim());
+    if (!sinIslr && conConcepto.some((c) => c.monto <= 0)) {
       setMsg('Complete el monto ISLR o verifique total y exento');
+      return;
+    }
+    const grabado = calcularGrabado(totalBsForm, exento);
+    const sumaMontos = round2(conConcepto.reduce((s, c) => s + c.monto, 0));
+    if (!sinIslr && sumaMontos > grabado + 0.01) {
+      setMsg(
+        `La suma de conceptos (${fmtBs(sumaMontos)}) supera el grabado (${fmtBs(grabado)}).`
+      );
+      return;
+    }
+    if (
+      !sinIslr &&
+      conConcepto.length === 0 &&
+      !window.confirm(
+        'No ha agregado retención de ISLR.\n\n¿Está seguro de que esta factura está exenta de retención ISLR?'
+      )
+    ) {
       return;
     }
     const payload = buildPayload();
@@ -374,17 +394,22 @@ export function FacturaForm() {
         <div className="form-grid-span-3 form-divider">
           <div className="panel-header panel-header-accent-rose" style={{ marginBottom: '0.75rem' }}>
             <h3>Conceptos ISLR</h3>
-            {sinIslr && <p className="text-muted text-sm mt-1">Los recibos (REC) no aplican retención ISLR.</p>}
+            {sinIslr && (
+              <p className="text-muted text-sm mt-1">
+                ISLR solo en facturas (FAC). Recibos y notas de entrega no aplican retención.
+              </p>
+            )}
           </div>
           {!sinIslr && conceptos.map((c, i) => {
             const restante = totalBsForm > 0
-              ? baseRestanteIslr(conceptos, totalBsForm, exento, i)
+              ? grabadoRestanteIslr(conceptos, totalBsForm, exento, i)
               : 0;
+            const grabado = totalBsForm > 0 ? calcularGrabado(totalBsForm, exento) : 0;
             const hintMonto =
               c.concepto && totalBsForm > 0
                 ? restante > 0
-                  ? `Disponible para esta línea: ${fmtBs(restante)}`
-                  : 'Sin base restante — ajuste montos de otras líneas'
+                  ? `Grabado disponible: ${fmtBs(grabado)} · restante línea: ${fmtBs(restante)}`
+                  : 'Sin grabado restante — ajuste montos de otras líneas'
                 : undefined;
             return (
               <div key={i} className="concepto-islr-row form-grid-span-3">

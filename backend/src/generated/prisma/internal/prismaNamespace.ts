@@ -1359,6 +1359,10 @@ export const TabIslrScalarFieldEnum = {
   pjnd: 'pjnd',
   basePnnr: 'basePnnr',
   pnnr: 'pnnr',
+  t2Pnr: 't2Pnr',
+  t2Pjd: 't2Pjd',
+  t2Pjnd: 't2Pjnd',
+  t2Pnnr: 't2Pnnr',
   orden: 'orden'
 } as const
 

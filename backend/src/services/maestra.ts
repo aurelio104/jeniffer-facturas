@@ -1,5 +1,4 @@
 import { prisma } from '../lib/prisma.js';
-import { obtenerTasaDelDia } from './tasas.js';
 
 export interface MaestraRow {
   id: string;
@@ -38,6 +37,16 @@ function round2(n: number) {
   return Math.round(n * 100) / 100;
 }
 
+/** Última tasa usada en un pago del documento (ControlInterno.UltimaTasaPago). */
+function ultimaTasaPago(
+  pagosFactura: Array<{ tasa: number | null; pagadoBs: number | null; fecha: Date }>
+): number {
+  const conTasa = pagosFactura.filter((p) => (p.tasa ?? 0) > 0 && (p.pagadoBs ?? 0) > 0);
+  if (conTasa.length === 0) return 0;
+  const ultimo = conTasa.sort((a, b) => b.fecha.getTime() - a.fecha.getTime())[0];
+  return ultimo.tasa ?? 0;
+}
+
 function diasVencida(fecha: Date, diasCredito: number): number {
   const venc = new Date(fecha);
   venc.setDate(venc.getDate() + diasCredito);
@@ -55,7 +64,6 @@ export async function construirMaestra(filtroRif?: string): Promise<MaestraRow[]
   });
 
   const pagos = await prisma.pago.findMany();
-  const tasaHoy = await obtenerTasaDelDia(new Date());
   const rows: MaestraRow[] = [];
 
   for (const f of facturas) {
@@ -88,11 +96,11 @@ export async function construirMaestra(filtroRif?: string): Promise<MaestraRow[]
     }
 
     const dias = diasVencida(f.fecha, f.diasCredito);
+    const netoUsdVal = f.montoAPagarUsd ?? null;
     let difCambiariaUsd: number | null = null;
-    if (saldoBs > 0 && f.tasaRegistro && f.tasaRegistro > 0 && tasaHoy > 0) {
-      const usdHoy = saldoBs / tasaHoy;
-      const usdReg = saldoBs / f.tasaRegistro;
-      difCambiariaUsd = round2(usdHoy - usdReg);
+    const tasaPago = ultimaTasaPago(pagosFactura);
+    if (tasaPago > 0 && pagadoBs > 0 && netoUsdVal != null && netoUsdVal > 0) {
+      difCambiariaUsd = round2(pagadoBs / tasaPago - netoUsdVal);
     }
 
     rows.push({
