@@ -18,8 +18,19 @@ export function Login() {
       const { user, token } = await authApi.login(username, password);
       setSession(user, token);
       navigate('/dashboard', { replace: true });
-    } catch {
-      setError('Usuario o contraseña incorrectos');
+    } catch (err: unknown) {
+      const ax = err as { response?: { status?: number }; code?: string };
+      if (!ax.response || ax.code === 'ERR_NETWORK') {
+        setError(
+          'No hay conexión con el servidor. Abra: jeniffer-facturas-aurelio104-d09b8633.koyeb.app'
+        );
+      } else if (ax.response.status && ax.response.status >= 500) {
+        setError(
+          'Error del servidor (500). Use la app en Koyeb: jeniffer-facturas-aurelio104-d09b8633.koyeb.app'
+        );
+      } else {
+        setError('Usuario o contraseña incorrectos');
+      }
     }
   };
 
@@ -34,8 +45,19 @@ export function Login() {
         }}>
           Control de Facturas
         </h1>
-        <p className="text-sm mb-6 text-secondary">
-          Aplicativo local — ingresa tus credenciales
+        <p className="text-sm mb-2 text-secondary">
+          Ingresa tus credenciales
+        </p>
+        <p className="text-xs mb-6 text-muted">
+          App en{' '}
+          <a
+            className="link-green"
+            href="https://jeniffer-facturas-aurelio104-d09b8633.koyeb.app"
+            target="_blank"
+            rel="noreferrer"
+          >
+            jeniffer-facturas.koyeb.app
+          </a>
         </p>
         <form onSubmit={submit} className="flex flex-col gap-4">
           <FormField

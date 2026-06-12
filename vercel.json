@@ -1,22 +1,10 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "npm run build:vercel",
-  "outputDirectory": "frontend/dist",
-  "installCommand": "npm install",
-  "framework": null,
-  "build": {
-    "env": {
-      "VITE_API_URL": ""
+  "redirects": [
+    {
+      "source": "/:path*",
+      "destination": "https://jeniffer-facturas-aurelio104-d09b8633.koyeb.app/:path*",
+      "permanent": false
     }
-  },
-  "functions": {
-    "api/index.ts": {
-      "maxDuration": 30,
-      "includeFiles": "backend/dist/**"
-    }
-  },
-  "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api" },
-    { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
