@@ -1,0 +1,18 @@
+# Despliegue completo (API + web estática) en Render.
+services:
+  - type: web
+    name: jeniffer
+    runtime: node
+    buildCommand: npm install && npm run build && cd backend && npx prisma db push && npm run db:seed
+    startCommand: SERVE_FRONTEND=1 npm --prefix backend start
+    plan: free
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: SERVE_FRONTEND
+        value: "1"
+      - key: DATABASE_URL
+        value: file:./prisma/dev.db
+      - key: FRONTEND_URL
+        sync: false

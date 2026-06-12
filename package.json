@@ -1,0 +1,20 @@
+{
+  "name": "yennifer-facturas",
+  "version": "1.0.0",
+  "description": "Jeniffer — control interno de facturas, pagos e ISLR (aplicativo local)",
+  "private": true,
+  "workspaces": ["backend", "frontend"],
+  "scripts": {
+    "dev": "bash scripts/dev.sh",
+    "dev:backend": "cd backend && npm run dev",
+    "dev:frontend": "cd frontend && npm run dev",
+    "build": "npm run build:backend && npm run build:frontend",
+    "build:backend": "cd backend && npm run build",
+    "build:frontend": "cd frontend && npm run build",
+    "db:push": "cd backend && npx prisma db push",
+    "db:seed": "cd backend && npm run db:seed",
+    "db:import": "bash scripts/importar.sh",
+    "db:bcv-rebuild": "cd backend && npx tsx scripts/rebuild-bcv-historico.ts"
+  },
+  "engines": { "node": ">=22.0.0" }
+}

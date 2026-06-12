@@ -1,0 +1,8 @@
+# Usuarios Jeniffer — gestión en la app (admin → Usuarios)
+
+| Usuario   | Contraseña | Rol      | Notas              |
+|-----------|------------|----------|--------------------|
+| admin     | Admi123    | admin    | Crear más usuarios |
+| jeniffer  | 1234       | operador | Operación diaria   |
+
+Nuevos usuarios: Panel → + Usuario  o  /admin/usuarios

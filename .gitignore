@@ -1,0 +1,20 @@
+node_modules/
+dist/
+*.xlsm
+*.xlsx
+REGISTRO FACTURA*
+VBA_IMPORTAR/
+.env
+.env.local
+.env.*.local
+*.log
+.DS_Store
+.venv/
+backend/prisma/dev.db
+backend/prisma/backups/
+.cursor/
+*.db-journal
+.vercel/
+frontend/.vercel/
+frontend/.env.local
+.vercel

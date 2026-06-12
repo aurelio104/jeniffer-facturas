@@ -1,0 +1,172 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Proveedor {
+  id           String   @id @default(cuid())
+  rif          String   @unique
+  nombre       String
+  tipoIslr     String
+  direccion    String?
+  telefono     String?
+  email        String?
+  numCuenta    String?
+  banco        String?
+  titular      String?
+  idTitular    String?
+  retencionIva String   @default("100%")
+  estacion     String?
+  referido     String?
+  servicio     String?
+  notas        String?
+  facturas     Factura[]
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Tasa {
+  id       String   @id @default(cuid())
+  fecha    DateTime @unique
+  valor    Float
+  valorEur Float?
+}
+
+model User {
+  id           String    @id @default(cuid())
+  username     String    @unique
+  nombre       String
+  passwordHash String
+  rol          String    @default("operador")
+  createdAt    DateTime  @default(now())
+  sessions     Session[]
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+model Alerta {
+  id          String   @id @default(cuid())
+  tipo        String
+  prioridad   Float    @default(0)
+  titulo      String
+  detalle     String?
+  facturaId   String?
+  rif         String?
+  proveedor   String?
+  documento   String?
+  saldoBs     Float?
+  diasVencida Int?
+  leida       Boolean  @default(false)
+  descartada  Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([tipo, facturaId])
+  @@index([leida, descartada])
+}
+
+model Factura {
+  id               String   @id @default(cuid())
+  tipo             String
+  numero           String
+  rif              String
+  proveedorId      String?
+  proveedorRel     Proveedor? @relation(fields: [proveedorId], references: [id])
+  proveedorNombre  String
+  fecha            DateTime
+  estacion         String?
+  causado          String?
+  concepto         String?
+  diasCredito      Int      @default(0)
+  moneda           String   @default("Bs")
+  tasaRegistro     Float?
+  totalBs          Float
+  totalUsd         Float?
+  exentoBs         Float    @default(0)
+  descripcionIslr  String?
+  detalleIslr      String?
+  baseIslr         Float    @default(0)
+  retencionIslr    Float    @default(0)
+  grabadoBs        Float    @default(0)
+  baseImponible    Float    @default(0)
+  iva16            Float    @default(0)
+  retencionIva     Float    @default(0)
+  montoAPagar      Float    @default(0)
+  montoAPagarUsd   Float?
+  recibidoFisico   String   @default("Pendiente")
+  retencionEnviada String   @default("Pendiente")
+  pagos            Pago[]
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@unique([tipo, numero, rif])
+}
+
+model Pago {
+  id               String   @id @default(cuid())
+  fecha            DateTime
+  rif              String
+  proveedor        String
+  documento        String
+  banco            String
+  referencia       String
+  pagadoBs         Float?
+  pagadoUsd        Float?
+  tasa             Float?
+  observacion      String?
+  estadoAnticipo   String?
+  anticipoAplicado Float?
+  facturaId        String?
+  factura          Factura? @relation(fields: [facturaId], references: [id])
+  createdAt        DateTime @default(now())
+
+  @@index([rif, documento])
+  @@index([referencia, banco, rif])
+}
+
+model AuditoriaLog {
+  id      String   @id @default(cuid())
+  fecha   DateTime @default(now())
+  usuario String?
+  accion  String
+  detalle String?
+}
+
+model ConfigItem {
+  id        String @id @default(cuid())
+  categoria String
+  valor     String
+  extra     String?
+  orden     Int    @default(0)
+
+  @@index([categoria])
+}
+
+model TabIslr {
+  id            String  @id @default(cuid())
+  concepto      String
+  basePnr       Float?
+  pnr           Float?
+  pagosMinBs    Float?
+  sustraendoBs  Float?
+  basePjd       Float?
+  pjd           Float?
+  basePjnd      Float?
+  pjnd          Float?
+  basePnnr      Float?
+  pnnr          Float?
+  orden         Int     @default(0)
+}
