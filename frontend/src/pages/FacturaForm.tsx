@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { HeroTemplate } from '../components/HeroTemplate';
 import { AppNav } from '../components/AppNav';
@@ -18,6 +18,12 @@ import {
   fmtBs
 } from '../services/api';
 import { AdminOnly } from '../components/AdminOnly';
+import {
+  autollenarMontosIslr,
+  calcularBaseImponible,
+  isTipoSinIslr,
+  totalBsFromForm
+} from '../lib/factura-calc';
 
 type ConceptoRow = { concepto: string; monto: number };
 
@@ -53,6 +59,23 @@ export function FacturaForm() {
   const [previewLoading, setPreviewLoading] = useState(false);
   const [recibidoFisico, setRecibidoFisico] = useState('Pendiente');
   const [retencionEnviada, setRetencionEnviada] = useState('Pendiente');
+
+  const proveedorSel = useMemo(
+    () => proveedores.find((p) => p.rif === rif),
+    [proveedores, rif]
+  );
+
+  const totalBsForm = useMemo(
+    () => totalBsFromForm(total, moneda, tasa),
+    [total, moneda, tasa]
+  );
+
+  const baseImponibleLocal = useMemo(
+    () => (totalBsForm > 0 ? calcularBaseImponible(totalBsForm, exento) : 0),
+    [totalBsForm, exento]
+  );
+
+  const sinIslr = isTipoSinIslr(tipo);
 
   useEffect(() => {
     proveedoresApi.list().then(setProveedores);
@@ -100,13 +123,28 @@ export function FacturaForm() {
       setDupWarning('');
       return;
     }
-    const t = setTimeout(() => {
+    const timer = setTimeout(() => {
       facturasApi.checkDuplicada(tipo, numero.trim(), rif).then((r) => {
         setDupWarning(r.duplicada ? 'Esta factura ya está registrada para este RIF' : '');
       });
     }, 400);
-    return () => clearTimeout(t);
+    return () => clearTimeout(timer);
   }, [tipo, numero, rif, isEdit]);
+
+  useEffect(() => {
+    if (sinIslr) {
+      setConceptos([{ concepto: '', monto: 0 }]);
+    }
+  }, [sinIslr]);
+
+  useEffect(() => {
+    if (locked || sinIslr || totalBsForm <= 0) return;
+    const filled = autollenarMontosIslr(conceptos, totalBsForm, exento, tipo);
+    const same = filled.every(
+      (c, i) => c.concepto === conceptos[i]?.concepto && c.monto === conceptos[i]?.monto
+    );
+    if (!same) setConceptos(filled);
+  }, [total, exento, moneda, tasa, tipo, locked, sinIslr, totalBsForm]);
 
   const buildPayload = () => ({
     tipo,
@@ -124,7 +162,7 @@ export function FacturaForm() {
     totalUsd: moneda === 'USD' ? total : total / tasa,
     exentoBs: exento,
     conceptosIslr: conceptos
-      .filter((c) => c.concepto && c.monto > 0)
+      .filter((c) => c.concepto.trim())
       .map((c) => ({ concepto: c.concepto, monto: c.monto })),
     recibidoFisico,
     retencionEnviada
@@ -141,6 +179,20 @@ export function FacturaForm() {
       try {
         const p = await facturasApi.preview(buildPayload());
         setPreview(p);
+        if (p.conceptosIslrNormalizados?.length && !locked && !sinIslr) {
+          const norm = p.conceptosIslrNormalizados.map((c) => ({
+            concepto: c.concepto,
+            monto: c.monto
+          }));
+          const local = conceptos.filter((c) => c.concepto.trim());
+          const namesMatch =
+            norm.length === local.length &&
+            norm.every((c, i) => c.concepto === local[i]?.concepto);
+          if (namesMatch) {
+            const montosDiffer = norm.some((c, i) => c.monto !== local[i]?.monto);
+            if (montosDiffer) setConceptos(norm);
+          }
+        }
       } catch {
         setPreview(null);
       } finally {
@@ -163,7 +215,9 @@ export function FacturaForm() {
     concepto,
     diasCredito,
     recibidoFisico,
-    retencionEnviada
+    retencionEnviada,
+    locked,
+    sinIslr
   ]);
 
   const onRifChange = async (v: string) => {
@@ -196,24 +250,33 @@ export function FacturaForm() {
     } catch { /* ignore */ }
   };
 
-  const addConcepto = () => setConceptos([...conceptos, { concepto: '', monto: 0 }]);
-
-  const runPreview = async () => {
-    setMsg('');
-    try {
-      const p = await facturasApi.preview(buildPayload());
-      setPreview(p);
-    } catch (err: unknown) {
-      const ax = err as { response?: { data?: { error?: string } } };
-      setMsg(ax.response?.data?.error ?? 'Error en preview');
+  const setConceptoRow = (index: number, conceptoVal: string) => {
+    const copy = [...conceptos];
+    copy[index] = { concepto: conceptoVal, monto: 0 };
+    if (!sinIslr && totalBsForm > 0 && conceptoVal) {
+      setConceptos(autollenarMontosIslr(copy, totalBsForm, exento, tipo));
+    } else {
+      setConceptos(copy);
     }
   };
+
+  const setConceptoMonto = (index: number, monto: number) => {
+    const copy = [...conceptos];
+    copy[index].monto = monto;
+    setConceptos(copy);
+  };
+
+  const addConcepto = () => setConceptos([...conceptos, { concepto: '', monto: 0 }]);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setMsg('');
     if (dupWarning) {
       setMsg(dupWarning);
+      return;
+    }
+    if (!sinIslr && tipo === 'FAC' && conceptos.some((c) => c.concepto && c.monto <= 0)) {
+      setMsg('Complete el monto ISLR o verifique total y exento');
       return;
     }
     const payload = buildPayload();
@@ -231,6 +294,9 @@ export function FacturaForm() {
       setMsg(ax.response?.data?.error ?? 'Error al guardar');
     }
   };
+
+  const tipoIslrLabel = preview?.tipoIslrAplicado ?? proveedorSel?.tipoIslr ?? 'PNR';
+  const retIvaLabel = preview?.retencionIvaAplicada ?? proveedorSel?.retencionIva ?? '100%';
 
   return (
     <HeroTemplate>
@@ -261,6 +327,15 @@ export function FacturaForm() {
           required
         />
         <FormField label="Proveedor" value={proveedorNombre} onChange={(e) => setProveedorNombre(e.target.value)} disabled={locked} required />
+        {rif && (
+          <div className="form-grid-span-3 fiscal-badges">
+            <span className="fiscal-badge">Tipo ISLR: <strong>{tipoIslrLabel}</strong></span>
+            <span className="fiscal-badge">Ret. IVA: <strong>{retIvaLabel}</strong></span>
+            {totalBsForm > 0 && (
+              <span className="fiscal-badge">Base imponible: <strong>{fmtBs(baseImponibleLocal)}</strong></span>
+            )}
+          </div>
+        )}
         <FormField label="Fecha" type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} required />
         <FormField as="select" label="Causado" value={causado} onChange={(e) => setCausado(e.target.value)} options={[
           { value: '', label: '—' },
@@ -302,49 +377,65 @@ export function FacturaForm() {
         <div className="form-grid-span-3 form-divider">
           <div className="panel-header panel-header-accent-rose" style={{ marginBottom: '0.75rem' }}>
             <h3>Conceptos ISLR</h3>
+            {sinIslr && <p className="text-muted text-sm mt-1">Los recibos (REC) no aplican retención ISLR.</p>}
           </div>
-          {conceptos.map((c, i) => (
+          {!sinIslr && conceptos.map((c, i) => (
             <div key={i} className="grid grid-cols-2 gap-2 mb-2 form-grid-span-3">
-              <FormField as="select" label="Concepto" value={c.concepto} onChange={(e) => {
-                const copy = [...conceptos];
-                copy[i].concepto = e.target.value;
-                setConceptos(copy);
-              }} options={[
+              <FormField as="select" label="Concepto" value={c.concepto} onChange={(e) => setConceptoRow(i, e.target.value)} options={[
                 { value: '', label: '—' },
                 ...tabIslr.map((t) => ({ value: t.concepto, label: t.concepto }))
               ]} />
-              <MoneyInputField label="Monto Bs" value={c.monto} onChange={(monto) => {
-                const copy = [...conceptos];
-                copy[i].monto = monto;
-                setConceptos(copy);
-              }} />
+              <MoneyInputField
+                label="Monto Bs"
+                value={c.monto}
+                onChange={(monto) => setConceptoMonto(i, monto)}
+                hint={c.concepto && baseImponibleLocal > 0 ? `Base imponible: ${fmtBs(baseImponibleLocal)}` : undefined}
+              />
             </div>
           ))}
-          <button type="button" className="link-green" onClick={addConcepto}>+ Otro concepto</button>
+          {!sinIslr && (
+            <button type="button" className="link-green" onClick={addConcepto}>+ Otro concepto</button>
+          )}
         </div>
 
-        {(preview || previewLoading) && (
+        {(preview || previewLoading || total > 0 && rif) && (
           <div className="form-grid-span-3 calc-preview">
             <p className="calc-preview-title">
               {previewLoading ? 'Calculando…' : 'Cálculo automático'}
             </p>
-            {preview && (
+            {preview ? (
               <>
-            <div className="calc-preview-item"><label>Base imponible</label><MoneyValue value={preview.baseImponible} /></div>
-            <div className="calc-preview-item"><label>IVA 16%</label><MoneyValue value={preview.iva16} /></div>
-            <div className="calc-preview-item"><label>Ret. IVA</label><MoneyValue value={preview.retencionIva} /></div>
-            <div className="calc-preview-item"><label>Ret. ISLR</label><MoneyValue value={preview.retencionIslr} /></div>
-            <div className="calc-preview-item"><label>A pagar Bs</label><MoneyValue value={preview.montoAPagar} size="lg" /></div>
-            {preview.montoAPagarUsd != null && (
-              <div className="calc-preview-item"><label>A pagar USD</label><MoneyValue value={preview.montoAPagarUsd} /></div>
-            )}
+                <div className="calc-preview-item"><label>Total Bs</label><MoneyValue value={preview.totalBs} /></div>
+                {preview.totalUsd != null && (
+                  <div className="calc-preview-item"><label>Total USD</label><MoneyValue value={preview.totalUsd} /></div>
+                )}
+                <div className="calc-preview-item"><label>Grabado Bs</label><MoneyValue value={preview.grabadoBs} /></div>
+                <div className="calc-preview-item"><label>Base imponible</label><MoneyValue value={preview.baseImponible} /></div>
+                <div className="calc-preview-item"><label>IVA 16%</label><MoneyValue value={preview.iva16} /></div>
+                <div className="calc-preview-item">
+                  <label>Ret. IVA ({retIvaLabel})</label>
+                  <MoneyValue value={preview.retencionIva} />
+                </div>
+                <div className="calc-preview-item"><label>Base ISLR</label><MoneyValue value={preview.baseIslr} /></div>
+                <div className="calc-preview-item">
+                  <label>Ret. ISLR ({tipoIslrLabel})</label>
+                  <MoneyValue value={preview.retencionIslr} />
+                </div>
+                <div className="calc-preview-item calc-preview-highlight">
+                  <label>A pagar Bs</label>
+                  <MoneyValue value={preview.montoAPagar} size="lg" />
+                </div>
+                {preview.montoAPagarUsd != null && (
+                  <div className="calc-preview-item"><label>A pagar USD</label><MoneyValue value={preview.montoAPagarUsd} /></div>
+                )}
               </>
+            ) : !previewLoading && total > 0 && (
+              <p className="calc-preview-empty text-muted">Seleccione proveedor y complete datos para calcular.</p>
             )}
           </div>
         )}
 
         <div className="form-grid-span-3 form-actions">
-          <button type="button" className="ios-btn ios-btn-ghost" onClick={runPreview}>Vista previa</button>
           <button type="submit" className="ios-btn ios-btn-primary">Guardar</button>
           {isEdit && id && (
             <AdminOnly>

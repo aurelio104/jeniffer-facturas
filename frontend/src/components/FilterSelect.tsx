@@ -1,3 +1,5 @@
+import { SearchSelectField } from './SearchSelectField';
+
 type Option = { value: string; label: string };
 
 type Props = {
@@ -10,15 +12,12 @@ type Props = {
 
 export function FilterSelect({ label, value, onChange, options, className }: Props) {
   return (
-    <div className={['field-group field-group-inline', className].filter(Boolean).join(' ')}>
-      <label className="field-label">{label}</label>
-      <div className="field-select-wrap">
-        <select className="field-input" value={value} onChange={(e) => onChange(e.target.value)}>
-          {options.map((o) => (
-            <option key={o.value} value={o.value}>{o.label}</option>
-          ))}
-        </select>
-      </div>
-    </div>
+    <SearchSelectField
+      label={label}
+      value={value}
+      onChange={onChange}
+      options={options}
+      className={['field-group-inline', className].filter(Boolean).join(' ')}
+    />
   );
 }

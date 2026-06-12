@@ -5,6 +5,7 @@ import { requireAdmin } from '../lib/auth-middleware.js';
 import { logAuditoria } from '../services/auditoria.js';
 import { getRequestUser } from '../lib/request-user.js';
 import { calcularIvaYNeto, calcularIslr, type ConceptoIslrInput } from '../services/islr.js';
+import { normalizarConceptosIslr } from '../services/factura-calc.js';
 import { obtenerTasaDelDia } from '../services/tasas.js';
 import { suggestFacturaPorRif, checkFacturaDuplicada } from '../services/factura-suggest.js';
 import { refreshAlertasDebounced } from '../services/scheduler.js';
@@ -54,7 +55,13 @@ async function buildFacturaData(input: z.infer<typeof schema>, existingId?: stri
     totalUsd = totalBs / tasa;
   }
 
-  const conceptos: ConceptoIslrInput[] = input.conceptosIslr ?? [];
+  const conceptosRaw: ConceptoIslrInput[] = input.conceptosIslr ?? [];
+  const conceptos = normalizarConceptosIslr(
+    conceptosRaw,
+    totalBs,
+    input.exentoBs ?? 0,
+    input.tipo
+  );
   const islr = await calcularIslr(tipoIslr, conceptos, totalBs);
   const iva = calcularIvaYNeto(
     totalBs,
@@ -141,8 +148,14 @@ router.get('/buscar/:q', async (req, res) => {
 
 router.post('/preview', async (req, res) => {
   const input = schema.parse(req.body);
+  const prov = await prisma.proveedor.findUnique({ where: { rif: input.rif } });
   const data = await buildFacturaData(input);
-  res.json(data);
+  res.json({
+    ...data,
+    tipoIslrAplicado: prov?.tipoIslr ?? 'PNR',
+    retencionIvaAplicada: prov?.retencionIva ?? '100%',
+    conceptosIslrNormalizados: JSON.parse(data.detalleIslr ?? '[]')
+  });
 });
 
 router.get('/:id', async (req, res) => {

@@ -1,4 +1,5 @@
 import { InputHTMLAttributes } from 'react';
+import { SearchSelectField } from './SearchSelectField';
 
 type Props = InputHTMLAttributes<HTMLInputElement | HTMLSelectElement> & {
   label: string;
@@ -10,20 +11,28 @@ type Props = InputHTMLAttributes<HTMLInputElement | HTMLSelectElement> & {
 export function FormField({ label, as = 'input', options, hint, className, ...props }: Props) {
   const inputClass = ['field-input', className].filter(Boolean).join(' ');
 
+  if (as === 'select') {
+    return (
+      <SearchSelectField
+        label={label}
+        value={(props.value as string) ?? ''}
+        options={options ?? []}
+        onChange={(v) => {
+          const handler = props.onChange as ((e: { target: { value: string } }) => void) | undefined;
+          handler?.({ target: { value: v } });
+        }}
+        disabled={props.disabled}
+        required={props.required}
+        hint={hint}
+        className={className}
+      />
+    );
+  }
+
   return (
     <div className="field-group">
       <label className="field-label">{label}</label>
-      {as === 'select' ? (
-        <div className="field-select-wrap">
-          <select className={inputClass} {...(props as InputHTMLAttributes<HTMLSelectElement>)}>
-            {options?.map((o, i) => (
-              <option key={o.key ?? `${o.value}-${i}`} value={o.value}>{o.label}</option>
-            ))}
-          </select>
-        </div>
-      ) : (
-        <input className={inputClass} {...props} />
-      )}
+      <input className={inputClass} {...props} />
       {hint && <p className="field-hint">{hint}</p>}
     </div>
   );

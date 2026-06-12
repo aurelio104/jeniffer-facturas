@@ -10,7 +10,8 @@
     "build": "prisma generate && tsc",
     "start": "node dist/index.js",
     "postinstall": "prisma generate",
-    "db:seed": "tsx scripts/seed.ts"
+    "db:seed": "tsx scripts/seed.ts",
+    "test": "node --import tsx --test src/services/factura-calc.test.ts"
   },
   "dependencies": {
     "@libsql/client": "^0.17.0",

@@ -80,7 +80,12 @@ export type Factura = {
   detalleIslr?: string;
 };
 
-export type FacturaPreview = Factura & { descripcionIslr?: string };
+export type FacturaPreview = Factura & {
+  descripcionIslr?: string;
+  tipoIslrAplicado?: string;
+  retencionIvaAplicada?: string;
+  conceptosIslrNormalizados?: { concepto: string; monto: number }[];
+};
 
 export type Pago = {
   id: string;
