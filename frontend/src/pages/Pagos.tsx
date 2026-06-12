@@ -3,8 +3,10 @@ import { HeroTemplate } from '../components/HeroTemplate';
 import { AppNav } from '../components/AppNav';
 import { PageHeader } from '../components/PageHeader';
 import { FormField } from '../components/FormField';
+import { ProveedorSearchField } from '../components/ProveedorSearchField';
 import { FormCheckbox } from '../components/FormCheckbox';
 import { MoneyValue } from '../components/MoneyValue';
+import { MoneyInputField } from '../components/MoneyInputField';
 import { Modal } from '../components/Modal';
 import {
   pagosApi,
@@ -38,10 +40,20 @@ export function Pagos() {
     documento: '',
     banco: '',
     referencia: '',
-    pagadoBs: '',
-    pagadoUsd: '',
+    pagadoBs: 0,
+    pagadoUsd: 0,
     observacion: ''
   });
+
+  const onPagadoBsChange = (n: number) => {
+    setPagadoBs(n);
+    if (tasa > 0) setPagadoUsd(n / tasa);
+  };
+
+  const onPagadoUsdChange = (n: number) => {
+    setPagadoUsd(n);
+    if (tasa > 0) setPagadoBs(n * tasa);
+  };
 
   const [fecha, setFecha] = useState(new Date().toISOString().slice(0, 10));
   const [rif, setRif] = useState('');
@@ -50,8 +62,8 @@ export function Pagos() {
   const [facturaId, setFacturaId] = useState('');
   const [banco, setBanco] = useState('');
   const [referencia, setReferencia] = useState('');
-  const [pagadoBs, setPagadoBs] = useState('');
-  const [pagadoUsd, setPagadoUsd] = useState('');
+  const [pagadoBs, setPagadoBs] = useState(0);
+  const [pagadoUsd, setPagadoUsd] = useState(0);
   const [observacion, setObservacion] = useState('');
   const [esAnticipo, setEsAnticipo] = useState(false);
   const [anticipoId, setAnticipoId] = useState('');
@@ -109,9 +121,12 @@ export function Pagos() {
     }
     pagosApi.saldo(facturaId).then((s) => {
       setSaldo(s);
-      if (s.saldoBs > 0) setPagadoBs(String(s.saldoBs));
+      if (s.saldoBs > 0) {
+        setPagadoBs(s.saldoBs);
+        if (tasa > 0) setPagadoUsd(s.saldoBs / tasa);
+      }
     });
-  }, [facturaId, esAnticipo]);
+  }, [facturaId, esAnticipo, tasa]);
 
   const doSubmit = async () => {
     setMsg('');
@@ -124,8 +139,8 @@ export function Pagos() {
         banco,
         referencia,
         tasa,
-        pagadoBs: pagadoBs ? parseFloat(pagadoBs) : null,
-        pagadoUsd: pagadoUsd ? parseFloat(pagadoUsd) : null,
+        pagadoBs: pagadoBs > 0 ? pagadoBs : null,
+        pagadoUsd: pagadoUsd > 0 ? pagadoUsd : null,
         observacion,
         facturaId: esAnticipo ? null : facturaId || null,
         estadoAnticipo: esAnticipo ? 'Abierto' : undefined,
@@ -134,8 +149,8 @@ export function Pagos() {
       setMsg(esAnticipo ? 'Anticipo registrado' : 'Pago registrado');
       setConfirmOpen(false);
       setReferencia('');
-      setPagadoBs('');
-      setPagadoUsd('');
+      setPagadoBs(0);
+      setPagadoUsd(0);
       setAnticipoId('');
       load();
     } catch (err: unknown) {
@@ -159,8 +174,8 @@ export function Pagos() {
       documento: p.documento,
       banco: p.banco,
       referencia: p.referencia,
-      pagadoBs: p.pagadoBs != null ? String(p.pagadoBs) : '',
-      pagadoUsd: p.pagadoUsd != null ? String(p.pagadoUsd) : '',
+      pagadoBs: p.pagadoBs ?? 0,
+      pagadoUsd: p.pagadoUsd ?? 0,
       observacion: p.observacion ?? ''
     });
   };
@@ -175,8 +190,8 @@ export function Pagos() {
       documento: editForm.documento,
       banco: editForm.banco,
       referencia: editForm.referencia,
-      pagadoBs: editForm.pagadoBs ? parseFloat(editForm.pagadoBs) : null,
-      pagadoUsd: editForm.pagadoUsd ? parseFloat(editForm.pagadoUsd) : null,
+      pagadoBs: editForm.pagadoBs > 0 ? editForm.pagadoBs : null,
+      pagadoUsd: editForm.pagadoUsd > 0 ? editForm.pagadoUsd : null,
       observacion: editForm.observacion
     });
     setEditPago(null);
@@ -196,10 +211,13 @@ export function Pagos() {
 
       <form onSubmit={submit} className="ios-glass-card form-grid">
         <FormField label="Fecha" type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} />
-        <FormField as="select" label="RIF" value={rif} onChange={(e) => onRif(e.target.value)} options={[
-          { value: '', label: 'Seleccionar…' },
-          ...proveedores.map((p) => ({ value: p.rif, label: `${p.rif} — ${p.nombre}` }))
-        ]} />
+        <ProveedorSearchField
+          label="RIF"
+          value={rif}
+          proveedores={proveedores}
+          onChange={onRif}
+          required
+        />
         <FormField label="Proveedor" value={proveedor} onChange={(e) => setProveedor(e.target.value)} />
 
         <div className="form-grid-span-3">
@@ -256,8 +274,8 @@ export function Pagos() {
           ...(banco && !bancos.includes(banco) ? [{ value: banco, label: banco }] : [])
         ]} />
         <FormField label="Referencia" value={referencia} onChange={(e) => setReferencia(e.target.value)} required />
-        <FormField label="Pagado Bs" type="number" step="0.01" value={pagadoBs} onChange={(e) => setPagadoBs(e.target.value)} />
-        <FormField label="Pagado USD" type="number" step="0.01" value={pagadoUsd} onChange={(e) => setPagadoUsd(e.target.value)} />
+        <MoneyInputField label="Pagado Bs" value={pagadoBs} onChange={onPagadoBsChange} required />
+        <MoneyInputField label="Pagado USD" value={pagadoUsd} onChange={onPagadoUsdChange} />
         <FormField label="Observación" value={observacion} onChange={(e) => setObservacion(e.target.value)} />
 
         <div className="form-grid-span-3 form-actions">
@@ -372,10 +390,18 @@ export function Pagos() {
             ]} />
           <FormField label="Referencia" value={editForm.referencia}
             onChange={(e) => setEditForm({ ...editForm, referencia: e.target.value })} />
-          <FormField label="Pagado Bs" type="number" step="0.01" value={editForm.pagadoBs}
-            onChange={(e) => setEditForm({ ...editForm, pagadoBs: e.target.value })} />
-          <FormField label="Pagado USD" type="number" step="0.01" value={editForm.pagadoUsd}
-            onChange={(e) => setEditForm({ ...editForm, pagadoUsd: e.target.value })} />
+          <MoneyInputField label="Pagado Bs" value={editForm.pagadoBs}
+            onChange={(n) => setEditForm({
+              ...editForm,
+              pagadoBs: n,
+              pagadoUsd: tasa > 0 ? n / tasa : editForm.pagadoUsd
+            })} />
+          <MoneyInputField label="Pagado USD" value={editForm.pagadoUsd}
+            onChange={(n) => setEditForm({
+              ...editForm,
+              pagadoUsd: n,
+              pagadoBs: tasa > 0 ? n * tasa : editForm.pagadoBs
+            })} />
           <FormField label="Observación" value={editForm.observacion}
             onChange={(e) => setEditForm({ ...editForm, observacion: e.target.value })} />
         </form>
@@ -403,12 +429,12 @@ export function Pagos() {
           <div className="detail-item"><label>Banco</label><span>{banco}</span></div>
           <div className="detail-item">
             <label>Monto Bs</label>
-            <MoneyValue value={parseFloat(pagadoBs) || 0} size="lg" />
+            <MoneyValue value={pagadoBs} size="lg" />
           </div>
-          {pagadoUsd && (
+          {pagadoUsd > 0 && (
             <div className="detail-item">
               <label>Monto USD</label>
-              <MoneyValue value={parseFloat(pagadoUsd)} />
+              <MoneyValue value={pagadoUsd} />
             </div>
           )}
         </div>

@@ -396,8 +396,22 @@ export const adminApi = {
   deleteTabIslr: (id: string) => api.delete(`/admin/tab-islr/${id}`)
 };
 
+const bsFormatter = new Intl.NumberFormat('es-VE', {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2
+});
+
 export function fmtBs(n: number) {
-  return new Intl.NumberFormat('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
+  return bsFormatter.format(n);
+}
+
+/** Parsea montos en formato venezolano (1.351.831,00) o entrada parcial al escribir */
+export function parseBs(input: string): number {
+  const s = input.trim().replace(/\s/g, '');
+  if (!s) return 0;
+  const normalized = s.replace(/\./g, '').replace(',', '.');
+  const n = parseFloat(normalized);
+  return Number.isFinite(n) ? n : 0;
 }
 
 export function downloadBlob(blob: Blob, filename: string) {

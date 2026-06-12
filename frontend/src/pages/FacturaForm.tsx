@@ -4,7 +4,9 @@ import { HeroTemplate } from '../components/HeroTemplate';
 import { AppNav } from '../components/AppNav';
 import { PageHeader } from '../components/PageHeader';
 import { FormField } from '../components/FormField';
+import { ProveedorSearchField } from '../components/ProveedorSearchField';
 import { MoneyValue } from '../components/MoneyValue';
+import { MoneyInputField } from '../components/MoneyInputField';
 import {
   facturasApi,
   proveedoresApi,
@@ -12,11 +14,12 @@ import {
   maestraApi,
   type Proveedor,
   type TabIslr,
-  type FacturaPreview
+  type FacturaPreview,
+  fmtBs
 } from '../services/api';
 import { AdminOnly } from '../components/AdminOnly';
 
-type ConceptoRow = { concepto: string; monto: string };
+type ConceptoRow = { concepto: string; monto: number };
 
 export function FacturaForm() {
   const { id } = useParams();
@@ -44,9 +47,10 @@ export function FacturaForm() {
   const [concepto, setConcepto] = useState('');
   const [diasCredito, setDiasCredito] = useState('0');
   const [moneda, setMoneda] = useState('Bs');
-  const [total, setTotal] = useState('');
-  const [exento, setExento] = useState('0');
-  const [conceptos, setConceptos] = useState<ConceptoRow[]>([{ concepto: '', monto: '' }]);
+  const [total, setTotal] = useState(0);
+  const [exento, setExento] = useState(0);
+  const [conceptos, setConceptos] = useState<ConceptoRow[]>([{ concepto: '', monto: 0 }]);
+  const [previewLoading, setPreviewLoading] = useState(false);
   const [recibidoFisico, setRecibidoFisico] = useState('Pendiente');
   const [retencionEnviada, setRetencionEnviada] = useState('Pendiente');
 
@@ -77,15 +81,15 @@ export function FacturaForm() {
       setConcepto(f.concepto ?? '');
       setDiasCredito(String(f.diasCredito));
       setMoneda(f.moneda);
-      setTotal(String(f.moneda === 'USD' ? f.totalUsd ?? f.totalBs : f.totalBs));
-      setExento(String(f.exentoBs));
+      setTotal(f.moneda === 'USD' ? f.totalUsd ?? f.totalBs : f.totalBs);
+      setExento(f.exentoBs);
       setRecibidoFisico(f.recibidoFisico);
       setRetencionEnviada(f.retencionEnviada);
       setLocked(true);
       if (f.detalleIslr) {
         try {
           const parsed = JSON.parse(f.detalleIslr) as { concepto: string; monto: number }[];
-          setConceptos(parsed.map((c) => ({ concepto: c.concepto, monto: String(c.monto) })));
+          setConceptos(parsed.map((c) => ({ concepto: c.concepto, monto: c.monto })));
         } catch { /* ignore */ }
       }
     });
@@ -104,30 +108,63 @@ export function FacturaForm() {
     return () => clearTimeout(t);
   }, [tipo, numero, rif, isEdit]);
 
-  const buildPayload = () => {
-    const totalNum = parseFloat(total) || 0;
-    return {
-      tipo,
-      numero,
-      rif,
-      proveedorNombre,
-      fecha,
-      causado: causado || undefined,
-      estacion: estacion || undefined,
-      concepto: concepto || undefined,
-      diasCredito: parseInt(diasCredito, 10) || 0,
-      moneda,
-      tasaRegistro: tasa,
-      totalBs: moneda === 'Bs' ? totalNum : totalNum * tasa,
-      totalUsd: moneda === 'USD' ? totalNum : totalNum / tasa,
-      exentoBs: parseFloat(exento) || 0,
-      conceptosIslr: conceptos
-        .filter((c) => c.concepto && c.monto)
-        .map((c) => ({ concepto: c.concepto, monto: parseFloat(c.monto) })),
-      recibidoFisico,
-      retencionEnviada
-    };
-  };
+  const buildPayload = () => ({
+    tipo,
+    numero,
+    rif,
+    proveedorNombre,
+    fecha,
+    causado: causado || undefined,
+    estacion: estacion || undefined,
+    concepto: concepto || undefined,
+    diasCredito: parseInt(diasCredito, 10) || 0,
+    moneda,
+    tasaRegistro: tasa,
+    totalBs: moneda === 'Bs' ? total : total * tasa,
+    totalUsd: moneda === 'USD' ? total : total / tasa,
+    exentoBs: exento,
+    conceptosIslr: conceptos
+      .filter((c) => c.concepto && c.monto > 0)
+      .map((c) => ({ concepto: c.concepto, monto: c.monto })),
+    recibidoFisico,
+    retencionEnviada
+  });
+
+  useEffect(() => {
+    if (!rif || total <= 0 || tasa <= 0) {
+      setPreview(null);
+      setPreviewLoading(false);
+      return;
+    }
+    setPreviewLoading(true);
+    const timer = window.setTimeout(async () => {
+      try {
+        const p = await facturasApi.preview(buildPayload());
+        setPreview(p);
+      } catch {
+        setPreview(null);
+      } finally {
+        setPreviewLoading(false);
+      }
+    }, 350);
+    return () => window.clearTimeout(timer);
+  }, [
+    rif,
+    total,
+    exento,
+    conceptos,
+    moneda,
+    tasa,
+    tipo,
+    proveedorNombre,
+    fecha,
+    causado,
+    estacion,
+    concepto,
+    diasCredito,
+    recibidoFisico,
+    retencionEnviada
+  ]);
 
   const onRifChange = async (v: string) => {
     if (locked) return;
@@ -150,7 +187,7 @@ export function FacturaForm() {
           setConceptos(
             s.ultimaFactura.conceptosIslr.map((c) => ({
               concepto: c.concepto,
-              monto: String(c.monto)
+              monto: c.monto
             }))
           );
         }
@@ -159,7 +196,7 @@ export function FacturaForm() {
     } catch { /* ignore */ }
   };
 
-  const addConcepto = () => setConceptos([...conceptos, { concepto: '', monto: '' }]);
+  const addConcepto = () => setConceptos([...conceptos, { concepto: '', monto: 0 }]);
 
   const runPreview = async () => {
     setMsg('');
@@ -215,10 +252,14 @@ export function FacturaForm() {
         } />
         <FormField label="Número" value={numero} onChange={(e) => setNumero(e.target.value)} required disabled={locked} />
         {dupWarning && <p className="form-grid-span-3 alert-error">{dupWarning}</p>}
-        <FormField as="select" label="RIF proveedor" value={rif} onChange={(e) => onRifChange(e.target.value)} disabled={locked} options={[
-          { value: '', label: 'Seleccionar…' },
-          ...proveedores.map((p) => ({ value: p.rif, label: `${p.rif} — ${p.nombre}` }))
-        ]} />
+        <ProveedorSearchField
+          label="RIF proveedor"
+          value={rif}
+          proveedores={proveedores}
+          onChange={onRifChange}
+          disabled={locked}
+          required
+        />
         <FormField label="Proveedor" value={proveedorNombre} onChange={(e) => setProveedorNombre(e.target.value)} disabled={locked} required />
         <FormField label="Fecha" type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} required />
         <FormField as="select" label="Causado" value={causado} onChange={(e) => setCausado(e.target.value)} options={[
@@ -235,8 +276,20 @@ export function FacturaForm() {
           { value: 'Bs', label: 'Bolívares' },
           { value: 'USD', label: 'USD' }
         ]} />
-        <FormField label={`Total (${moneda})`} type="number" step="0.01" value={total} onChange={(e) => setTotal(e.target.value)} required />
-        <FormField label="Exento Bs" type="number" step="0.01" value={exento} onChange={(e) => setExento(e.target.value)} />
+        <MoneyInputField
+          label={`Total (${moneda})`}
+          value={total}
+          onChange={setTotal}
+          required
+          hint={
+            total > 0 && tasa > 0
+              ? moneda === 'Bs'
+                ? `≈ ${fmtBs(total / tasa)} USD`
+                : `≈ ${fmtBs(total * tasa)} Bs`
+              : undefined
+          }
+        />
+        <MoneyInputField label="Exento Bs" value={exento} onChange={setExento} />
         <FormField as="select" label="Recibido físico" value={recibidoFisico} onChange={(e) => setRecibidoFisico(e.target.value)} options={[
           { value: 'Pendiente', label: 'Pendiente' },
           { value: 'Sí', label: 'Sí' }
@@ -260,9 +313,9 @@ export function FacturaForm() {
                 { value: '', label: '—' },
                 ...tabIslr.map((t) => ({ value: t.concepto, label: t.concepto }))
               ]} />
-              <FormField label="Monto Bs" type="number" step="0.01" value={c.monto} onChange={(e) => {
+              <MoneyInputField label="Monto Bs" value={c.monto} onChange={(monto) => {
                 const copy = [...conceptos];
-                copy[i].monto = e.target.value;
+                copy[i].monto = monto;
                 setConceptos(copy);
               }} />
             </div>
@@ -270,8 +323,13 @@ export function FacturaForm() {
           <button type="button" className="link-green" onClick={addConcepto}>+ Otro concepto</button>
         </div>
 
-        {preview && (
+        {(preview || previewLoading) && (
           <div className="form-grid-span-3 calc-preview">
+            <p className="calc-preview-title">
+              {previewLoading ? 'Calculando…' : 'Cálculo automático'}
+            </p>
+            {preview && (
+              <>
             <div className="calc-preview-item"><label>Base imponible</label><MoneyValue value={preview.baseImponible} /></div>
             <div className="calc-preview-item"><label>IVA 16%</label><MoneyValue value={preview.iva16} /></div>
             <div className="calc-preview-item"><label>Ret. IVA</label><MoneyValue value={preview.retencionIva} /></div>
@@ -279,6 +337,8 @@ export function FacturaForm() {
             <div className="calc-preview-item"><label>A pagar Bs</label><MoneyValue value={preview.montoAPagar} size="lg" /></div>
             {preview.montoAPagarUsd != null && (
               <div className="calc-preview-item"><label>A pagar USD</label><MoneyValue value={preview.montoAPagarUsd} /></div>
+            )}
+              </>
             )}
           </div>
         )}
