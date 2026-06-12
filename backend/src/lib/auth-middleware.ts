@@ -6,6 +6,8 @@ export type AuthedRequest = Request & { authUser?: AuthUser };
 const OPEN_PATHS = new Set(['/health', '/auth/login']);
 
 export async function requireAuth(req: AuthedRequest, res: Response, next: NextFunction) {
+  if (req.method === 'OPTIONS') return next();
+
   const path = req.path.replace(/\/$/, '') || '/';
   if (OPEN_PATHS.has(path)) return next();
 

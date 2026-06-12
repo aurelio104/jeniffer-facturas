@@ -12,6 +12,7 @@ import admin from './routes/admin.js';
 import alertas from './routes/alertas.js';
 import exportRoutes from './routes/export.js';
 import { requireAuth } from './lib/auth-middleware.js';
+import { buildCorsOptions } from './lib/cors-config.js';
 import { rebuildHistoricoBcv, startBcvHistoricoScheduler, guardarTasaHoyEnHistorico } from './services/bcv-historico.js';
 import { listarHistorico } from './services/tasas.js';
 import { seedUsers } from './services/auth-service.js';
@@ -21,23 +22,14 @@ import { startAppScheduler } from './services/scheduler.js';
 const app = express();
 const PORT = Number(process.env.PORT) || 3020;
 
-const frontendOrigin = process.env.FRONTEND_URL?.replace(/\/$/, '');
-app.use(
-  cors({
-    origin: frontendOrigin
-      ? (origin, cb) => {
-          if (!origin || origin === frontendOrigin) cb(null, true);
-          else cb(null, false);
-        }
-      : true
-  })
-);
+app.use(cors(buildCorsOptions()));
 app.use(express.json());
 
 app.get('/api/health', (_req, res) => {
   res.json({ ok: true, service: 'jeniffer-facturas' });
 });
 
+app.use('/api/auth', auth);
 app.use('/api', requireAuth);
 
 app.use('/api/proveedores', proveedores);
@@ -45,7 +37,6 @@ app.use('/api/facturas', facturas);
 app.use('/api/pagos', pagos);
 app.use('/api/tasas', tasas);
 app.use('/api/maestra', maestra);
-app.use('/api/auth', auth);
 app.use('/api/admin', admin);
 app.use('/api/alertas', alertas);
 app.use('/api/export', exportRoutes);

@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 FRONTEND="${FRONTEND_URL:-https://jeniffer-facturas.vercel.app}"
-API="${API_URL:-https://dialogue-gulf-utils-associates.trycloudflare.com/api}"
+# API_URL debe apuntar a tu API activa (Render, túnel cloudflared, etc.)
+API="${API_URL:?Define API_URL, ej. https://tu-api.onrender.com/api}"
 
 echo "=== Smoke test PRODUCCIÓN ==="
 echo "Frontend: $FRONTEND"
