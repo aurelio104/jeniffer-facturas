@@ -4,6 +4,8 @@ Un solo servicio con **volumen persistente** para SQLite: frontend + API + base 
 
 | | |
 |---|---|
+| **URL activa** | https://jeniffer-facturas-aurelio104-d09b8633.koyeb.app |
+| **Salud API** | `/api/health` |
 | **Coste** | Instancia **standard** mínima (los volúmenes no funcionan en plan free/eco) |
 | **Región** | `was` (Washington) o `fra` (Frankfurt) — obligatoria para volúmenes |
 | **Escala** | **1** réplica (requisito del volumen) |
