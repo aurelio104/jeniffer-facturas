@@ -19,7 +19,9 @@ import {
 } from '../services/api';
 import { AdminOnly } from '../components/AdminOnly';
 import {
-  autollenarMontosIslr,
+  aplicarMontoSugeridoRow,
+  autollenarSiUnSoloConcepto,
+  baseRestanteIslr,
   calcularBaseImponible,
   isTipoSinIslr,
   totalBsFromForm
@@ -139,7 +141,7 @@ export function FacturaForm() {
 
   useEffect(() => {
     if (locked || sinIslr || totalBsForm <= 0) return;
-    const filled = autollenarMontosIslr(conceptos, totalBsForm, exento, tipo);
+    const filled = autollenarSiUnSoloConcepto(conceptos, totalBsForm, exento, tipo);
     const same = filled.every(
       (c, i) => c.concepto === conceptos[i]?.concepto && c.monto === conceptos[i]?.monto
     );
@@ -179,20 +181,6 @@ export function FacturaForm() {
       try {
         const p = await facturasApi.preview(buildPayload());
         setPreview(p);
-        if (p.conceptosIslrNormalizados?.length && !locked && !sinIslr) {
-          const norm = p.conceptosIslrNormalizados.map((c) => ({
-            concepto: c.concepto,
-            monto: c.monto
-          }));
-          const local = conceptos.filter((c) => c.concepto.trim());
-          const namesMatch =
-            norm.length === local.length &&
-            norm.every((c, i) => c.concepto === local[i]?.concepto);
-          if (namesMatch) {
-            const montosDiffer = norm.some((c, i) => c.monto !== local[i]?.monto);
-            if (montosDiffer) setConceptos(norm);
-          }
-        }
       } catch {
         setPreview(null);
       } finally {
@@ -253,8 +241,8 @@ export function FacturaForm() {
   const setConceptoRow = (index: number, conceptoVal: string) => {
     const copy = [...conceptos];
     copy[index] = { concepto: conceptoVal, monto: 0 };
-    if (!sinIslr && totalBsForm > 0 && conceptoVal) {
-      setConceptos(autollenarMontosIslr(copy, totalBsForm, exento, tipo));
+    if (!sinIslr && totalBsForm > 0 && conceptoVal.trim()) {
+      setConceptos(aplicarMontoSugeridoRow(copy, index, totalBsForm, exento, tipo));
     } else {
       setConceptos(copy);
     }
@@ -266,7 +254,16 @@ export function FacturaForm() {
     setConceptos(copy);
   };
 
-  const addConcepto = () => setConceptos([...conceptos, { concepto: '', monto: 0 }]);
+  const addConcepto = () =>
+    setConceptos([...conceptos, { concepto: '', monto: 0 }]);
+
+  const removeConcepto = (index: number) => {
+    if (conceptos.length <= 1) {
+      setConceptos([{ concepto: '', monto: 0 }]);
+      return;
+    }
+    setConceptos(conceptos.filter((_, i) => i !== index));
+  };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -379,20 +376,42 @@ export function FacturaForm() {
             <h3>Conceptos ISLR</h3>
             {sinIslr && <p className="text-muted text-sm mt-1">Los recibos (REC) no aplican retención ISLR.</p>}
           </div>
-          {!sinIslr && conceptos.map((c, i) => (
-            <div key={i} className="grid grid-cols-2 gap-2 mb-2 form-grid-span-3">
-              <FormField as="select" label="Concepto" value={c.concepto} onChange={(e) => setConceptoRow(i, e.target.value)} options={[
-                { value: '', label: '—' },
-                ...tabIslr.map((t) => ({ value: t.concepto, label: t.concepto }))
-              ]} />
-              <MoneyInputField
-                label="Monto Bs"
-                value={c.monto}
-                onChange={(monto) => setConceptoMonto(i, monto)}
-                hint={c.concepto && baseImponibleLocal > 0 ? `Base imponible: ${fmtBs(baseImponibleLocal)}` : undefined}
-              />
-            </div>
-          ))}
+          {!sinIslr && conceptos.map((c, i) => {
+            const restante = totalBsForm > 0
+              ? baseRestanteIslr(conceptos, totalBsForm, exento, i)
+              : 0;
+            const hintMonto =
+              c.concepto && totalBsForm > 0
+                ? restante > 0
+                  ? `Disponible para esta línea: ${fmtBs(restante)}`
+                  : 'Sin base restante — ajuste montos de otras líneas'
+                : undefined;
+            return (
+              <div key={i} className="concepto-islr-row form-grid-span-3">
+                <div className="grid grid-cols-2 gap-2">
+                  <FormField as="select" label={`Concepto ${i + 1}`} value={c.concepto} onChange={(e) => setConceptoRow(i, e.target.value)} options={[
+                    { value: '', label: '—' },
+                    ...tabIslr.map((t) => ({ value: t.concepto, label: t.concepto }))
+                  ]} />
+                  <MoneyInputField
+                    label="Monto Bs"
+                    value={c.monto}
+                    onChange={(monto) => setConceptoMonto(i, monto)}
+                    hint={hintMonto}
+                  />
+                </div>
+                {conceptos.length > 1 && (
+                  <button
+                    type="button"
+                    className="link-muted concepto-islr-remove"
+                    onClick={() => removeConcepto(i)}
+                  >
+                    Quitar línea
+                  </button>
+                )}
+              </div>
+            );
+          })}
           {!sinIslr && (
             <button type="button" className="link-green" onClick={addConcepto}>+ Otro concepto</button>
           )}

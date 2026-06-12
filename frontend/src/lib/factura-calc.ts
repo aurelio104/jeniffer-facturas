@@ -18,34 +18,54 @@ export function calcularBaseImponible(totalBs: number, exentoBs = 0) {
   return round2(grabado / 1.16);
 }
 
-/** Autollenar montos ISLR con la base imponible (misma lógica que backend) */
-export function autollenarMontosIslr(
+/** Monto ya asignado en otras líneas (excluye índice opcional) */
+export function baseRestanteIslr(
+  conceptos: ConceptoRow[],
+  totalBs: number,
+  exentoBs: number,
+  excludeIndex?: number
+) {
+  const base = calcularBaseImponible(totalBs, exentoBs);
+  const usado = conceptos.reduce((s, c, i) => {
+    if (i === excludeIndex) return s;
+    if (c.concepto.trim() && c.monto > 0) return s + c.monto;
+    return s;
+  }, 0);
+  return Math.max(0, round2(base - usado));
+}
+
+/** Si solo hay una línea con concepto, usa la base imponible completa */
+export function autollenarSiUnSoloConcepto(
   conceptos: ConceptoRow[],
   totalBs: number,
   exentoBs: number,
   tipoDoc: string
 ): ConceptoRow[] {
-  if (isTipoSinIslr(tipoDoc) || totalBs <= 0) {
-    return conceptos.map((c) => ({ ...c, monto: 0 }));
-  }
+  if (isTipoSinIslr(tipoDoc) || totalBs <= 0) return conceptos;
 
-  const conNombre = conceptos.filter((c) => c.concepto.trim());
-  if (conNombre.length === 0) return conceptos;
+  const named = conceptos.filter((c) => c.concepto.trim());
+  if (named.length !== 1) return conceptos;
 
   const base = calcularBaseImponible(totalBs, exentoBs);
-  const sinMonto = conNombre.filter((c) => !c.monto || c.monto <= 0);
-  const asignado = conNombre
-    .filter((c) => c.monto > 0)
-    .reduce((s, c) => s + c.monto, 0);
+  return conceptos.map((c) =>
+    c.concepto.trim() ? { ...c, monto: base } : c
+  );
+}
 
-  if (sinMonto.length === 0) return conceptos;
+/** Sugiere monto solo para la línea indicada (restante tras otras líneas) */
+export function aplicarMontoSugeridoRow(
+  conceptos: ConceptoRow[],
+  index: number,
+  totalBs: number,
+  exentoBs: number,
+  tipoDoc: string
+): ConceptoRow[] {
+  if (isTipoSinIslr(tipoDoc) || totalBs <= 0) return conceptos;
+  const row = conceptos[index];
+  if (!row?.concepto.trim()) return conceptos;
 
-  const restante = Math.max(0, round2(base - asignado));
-  const parte = sinMonto.length === 1 ? restante : round2(restante / sinMonto.length);
-
-  return conceptos.map((c) => {
-    if (!c.concepto.trim()) return { ...c, monto: 0 };
-    if (c.monto > 0) return c;
-    return { ...c, monto: parte };
-  });
+  const restante = baseRestanteIslr(conceptos, totalBs, exentoBs, index);
+  const copy = [...conceptos];
+  copy[index] = { ...row, monto: restante };
+  return copy;
 }

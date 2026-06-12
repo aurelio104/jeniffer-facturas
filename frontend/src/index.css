@@ -972,6 +972,36 @@ body.modal-open .site-header-global {
   border: 1px solid var(--border-subtle);
 }
 
+.concepto-islr-row {
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.concepto-islr-row:last-of-type {
+  border-bottom: none;
+  margin-bottom: 0.5rem;
+}
+
+.concepto-islr-remove {
+  margin-top: 0.35rem;
+  font-size: 0.75rem;
+}
+
+.link-muted {
+  color: var(--text-muted);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-size: 0.8125rem;
+}
+
+.link-muted:hover {
+  color: var(--text-secondary);
+  text-decoration: underline;
+}
+
 .fiscal-badges {
   display: flex;
   flex-wrap: wrap;

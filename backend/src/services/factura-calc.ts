@@ -14,7 +14,10 @@ export function calcularBaseImponible(totalBs: number, exentoBs = 0) {
   return round2(grabado / 1.16);
 }
 
-/** Reparte la base imponible entre conceptos con nombre; autollenado tipo Excel */
+/**
+ * Normaliza conceptos ISLR respetando montos ya ingresados.
+ * Líneas sin monto reciben el restante en orden (no se divide entre varias).
+ */
 export function normalizarConceptosIslr(
   conceptos: ConceptoIslrInput[],
   totalBs: number,
@@ -26,31 +29,22 @@ export function normalizarConceptosIslr(
   const conNombre = conceptos.filter((c) => c.concepto.trim());
   if (conNombre.length === 0) return [];
 
-  const base = calcularBaseImponible(totalBs, exentoBs);
-  const sinMonto = conNombre.filter((c) => !c.monto || c.monto <= 0);
-  const conMonto = conNombre.filter((c) => c.monto > 0);
-  const asignado = conMonto.reduce((s, c) => s + c.monto, 0);
+  let restante = calcularBaseImponible(totalBs, exentoBs);
+  const result: ConceptoIslrInput[] = [];
 
-  if (sinMonto.length === 0) return conNombre;
-
-  let restante = Math.max(0, round2(base - asignado));
-
-  if (sinMonto.length === 1) {
-    return conNombre.map((c) => {
-      if (c.concepto && (!c.monto || c.monto <= 0)) {
-        return { concepto: c.concepto, monto: restante };
-      }
-      return c;
-    });
+  for (const c of conNombre) {
+    if (c.monto > 0) {
+      result.push({ concepto: c.concepto, monto: round2(c.monto) });
+      restante = round2(restante - c.monto);
+    } else if (restante > 0) {
+      result.push({ concepto: c.concepto, monto: restante });
+      restante = 0;
+    } else {
+      result.push({ concepto: c.concepto, monto: 0 });
+    }
   }
 
-  const parte = round2(restante / sinMonto.length);
-  return conNombre.map((c) => {
-    if (c.concepto && (!c.monto || c.monto <= 0)) {
-      return { concepto: c.concepto, monto: parte };
-    }
-    return c;
-  });
+  return result;
 }
 
 export function previewIvaDesdeTotales(

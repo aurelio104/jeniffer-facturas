@@ -31,7 +31,7 @@ test('REC no aplica ISLR', () => {
   assert.deepEqual(out, []);
 });
 
-test('autollenar monto ISLR con base imponible', () => {
+test('un solo concepto recibe la base imponible', () => {
   const out = normalizarConceptosIslr(
     [{ concepto: 'SERVICIOS', monto: 0 }],
     13518.31,
@@ -42,16 +42,30 @@ test('autollenar monto ISLR con base imponible', () => {
   assert.equal(out[0].monto, 11653.72);
 });
 
-test('reparte base entre varios conceptos sin monto', () => {
+test('varias líneas: primera toma base, segunda queda en 0 si no hay restante', () => {
   const out = normalizarConceptosIslr(
     [
       { concepto: 'SERVICIOS', monto: 0 },
       { concepto: 'HONORARIOS', monto: 0 }
     ],
-    11600,
+    13518.31,
     0,
     'FAC'
   );
-  const base = calcularBaseImponible(11600, 0);
-  assert.equal(out[0].monto + out[1].monto, base);
+  assert.equal(out[0].monto, 11653.72);
+  assert.equal(out[1].monto, 0);
+});
+
+test('varias líneas con montos parciales asignan restante en orden', () => {
+  const out = normalizarConceptosIslr(
+    [
+      { concepto: 'SERVICIOS', monto: 5000 },
+      { concepto: 'HONORARIOS', monto: 0 }
+    ],
+    13518.31,
+    0,
+    'FAC'
+  );
+  assert.equal(out[0].monto, 5000);
+  assert.equal(out[1].monto, 6653.72);
 });
